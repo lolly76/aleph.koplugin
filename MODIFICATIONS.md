@@ -1,5 +1,15 @@
 # Aleph (formerly Reading Board) — modifications, 2026-11-07 to 2026-11-15
 
+## 2026-11-27 — 1.3.0-grimmory.1 (Aleph for Grimmory fork)
+
+Modified by lolly76 from Aleph 1.3.0 (lara-2-ko/aleph.koplugin). This is a modified version of BookOrbit and is not an official BookOrbit release, nor an official Aleph release.
+
+- **Grimmory progress sync** (new aleph_grimmory.lua): the server address and a Grimmory KOReader user (name, MD5 of the password) in Settings > Library > Grimmory, with Test the connection. Where a book closes is sent to Grimmory's `/api/koreader/syncs/progress` (main.lua Board:onCloseDocument), queued when offline and sent again when Wi-Fi is back (Board:onNetworkConnected); where Grimmory has it is asked for when it opens (Board:onReaderReady), with an offer to go there when it is further on from another device. Books are matched by KOReader's partial MD5. Requests run in a background process (aleph_job.lua).
+- **"60% on Grimmory"** in the library and on a book's page (aleph_remote_progress.lua Remote.other), from what Grimmory last said for the book.
+- **Password prompts** (aleph_input.lua): `text_type` passed to KOReader's InputDialog.
+- **Translations**: French for the new texts; the other catalogues list them untranslated (English shown).
+- **Tests**: tests/grimmory_test.lua (35 checks: addresses, answers, the queue, settings, the jump offer).
+
 ## 2026-11-20 — 1.3.0 (release)
 
 Everything from 1.2.8 to 1.2.59 (see below), released as 1.3.0:

@@ -318,6 +318,9 @@ function Board:onReaderReady()
     -- advokatb's plugin off (aleph_gr.lua); while it is on, a warning.
     try(function() require("aleph_gr").open(self.ui) end)
     warnGoodreadsPlugin(self.ui)
+    -- Aleph for Grimmory modification, 2026-11-27: where Grimmory has this
+    -- book, and the offer to go there (aleph_grimmory.lua).
+    try(function() require("aleph_grimmory").open(self.ui) end)
     -- The memory diary: now, then every 10 minutes while reading.
     try(function()
         local Mem = require("aleph_mem")
@@ -342,6 +345,9 @@ function Board:onDocSettingsItemsChanged(file, doc_settings)
 end
 -- Back online: what waits for Goodreads is sent.
 function Board:onNetworkConnected()
+    -- Aleph for Grimmory modification, 2026-11-27: positions waiting for
+    -- Grimmory are sent.
+    try(function() require("aleph_grimmory").flush() end)
     local Core = package.loaded["aleph_gr"]
     if not Core then return end
     try(Core.flush)
@@ -399,6 +405,9 @@ function Board:onCloseDocument()
     -- Goodreads: the percentage it closed at (aleph_gr.lua).
     local Core = package.loaded["aleph_gr"]
     if Core then try(Core.close, self.ui) end
+    -- Aleph for Grimmory modification, 2026-11-27: where it closed, sent to
+    -- Grimmory (or queued until there is a network; aleph_grimmory.lua).
+    try(function() require("aleph_grimmory").close(self.ui) end)
     -- The book's entry in the library, made again from the reader's own
     -- settings: Home is right the first time it is drawn after the book,
     -- with no scan of the whole library (aleph_local.lua).

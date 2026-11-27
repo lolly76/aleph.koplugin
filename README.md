@@ -8,6 +8,8 @@ Aleph works with books and reading data on your device. No Aleph account or Book
 
 **This is a modified version of BookOrbit and is not an official BookOrbit release. Modified 20 November 2026.**
 
+> **Aleph for Grimmory** (this fork, modified 27 November 2026): Aleph as published by lara-2-ko, plus optional reading-progress sync with a [Grimmory](https://github.com/grimmory-tools/grimmory) server. It is not an official Aleph or BookOrbit release. See [Grimmory](#grimmory) below and MODIFICATIONS.md.
+
 ## Screenshots
 
 <table>
@@ -245,6 +247,21 @@ Aleph follows KOReader's language (KOReader's **Settings → Language**; restart
 
 To add a language, copy `l10n/aleph.pot` to `l10n/<code>/aleph.po`, where `<code>` is the language's folder name in KOReader's own `l10n` folder (for example `fr` or `de`), and fill in each `msgstr` line. Poedit and similar programs open these files.
 
+## Grimmory
+
+Optional, off until a server and an account are set. Aleph keeps each book's reading position on a self-hosted [Grimmory](https://github.com/grimmory-tools/grimmory) library, through the KOReader sync interface Grimmory provides (`/api/koreader`).
+
+1. In Grimmory, open **Settings > Devices > KOReader**, create the KOReader user and turn its sync on.
+2. In Aleph, open **Settings > Library > Grimmory**: set the server address (for example `http://192.168.1.10:6060`), then that user's name and password. Aleph tests the connection and keeps only the password's MD5, as KOReader's Progress sync does.
+
+Then, with Wi-Fi on:
+
+- **A book closes**: where it closed is sent to Grimmory. Offline, it waits (one entry a book, the newest) and is sent when Wi-Fi comes back, or from **Waiting to send**.
+- **A book opens**: Aleph asks where Grimmory has it. Further on there, from another device, Aleph offers to go there (**Offer to go further on** turns this off).
+- **Library and book pages** show "60% on Grimmory" when Grimmory has the book further on than this device.
+
+Books are matched by KOReader's partial MD5, which Grimmory also uses, so a book must be the same file as the one in Grimmory (a book downloaded from Grimmory is). A book Grimmory does not have is skipped. Requests run in a background process and stop after 25 seconds, so a slow server never holds up the reader. Turn off KOReader's own **Progress sync** if it points to the same server, or both will send; Aleph says so in its settings.
+
 ## Optional integrations
 
 | Component | Purpose |
@@ -260,6 +277,7 @@ To add a language, copy `l10n/aleph.pot` to `l10n/<code>/aleph.po`, where `<code
 | BT Manager - HID Passthrough | A Bluetooth switch in the reader menu |
 | Kobo (OGKevin's kobo.koplugin) | On the Kobos it supports Bluetooth on, the reader menu's Bluetooth switch uses it |
 | Syncery | Sync now in the reader menu; with KOSyncthing+ too, Sync runs the whole chain (Syncthing, Syncery, waiting for the other e-reader); the other e-reader's progress in the library and on book pages |
+| Grimmory server | Reading progress kept on a self-hosted Grimmory library (see [Grimmory](#grimmory)); no plugin needed |
 | Goodreads (advokatb, 0.5.0) | Not needed since 1.2.32: Aleph does its work itself with its code (MIT) and its files. While it is on, Aleph warns at each start and offers to turn it off, and sends nothing on its own |
 
 The standalone **Quick Top Bar** takes precedence over Aleph's built-in top bar. Choose which implementation to use. Other plugins or patches that replace the same reader menus, highlight panels or top menu can conflict; their combinations have not all been tested.

@@ -7,7 +7,7 @@ the board's colours, a title in the board's font, a rounded input field and
 pill buttons (Cancel, and the main action) instead of KOReader's plain text
 buttons.
 
-  Input.prompt{ title, text, hint, ok_label, on_ok(text) }
+  Input.prompt{ title, text, hint, ok_label, on_ok(text), text_type }
 ]]
 
 local InputDialog = require("ui/widget/inputdialog")
@@ -134,6 +134,8 @@ function Input.prompt(o)
         input = tostring(o.text or ""),
         input_hint = o.hint,
         input_type = o.input_type,
+        -- Aleph for Grimmory modification, 2026-11-27: "password" hides what is typed.
+        text_type = o.text_type,
         ok_label = o.ok_label,
         on_ok = o.on_ok,
         enter_callback = function() dialog:_run("ok") end,

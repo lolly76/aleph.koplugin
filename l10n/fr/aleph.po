@@ -6972,3 +6972,107 @@ msgstr "600 pages ou plus"
 #: aleph_migrate.lua
 msgid "Aleph is now in aleph.koplugin. Please delete the old readingboard.koplugin folder from koreader/plugins and restart KOReader: with both installed, screens are hooked twice."
 msgstr "Aleph est maintenant dans aleph.koplugin. Supprimez l'ancien dossier readingboard.koplugin de koreader/plugins et redémarrez KOReader : avec les deux installés, les écrans sont modifiés deux fois."
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Grimmory"
+msgstr "Grimmory"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Grimmory server"
+msgstr "Serveur Grimmory"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "KOReader user in Grimmory"
+msgstr "Utilisateur KOReader dans Grimmory"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Made in Grimmory: Settings > Devices > KOReader"
+msgstr "À créer dans Grimmory : Réglages > Appareils > KOReader"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Keep progress in sync"
+msgstr "Synchroniser la progression"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Sent when a book closes, asked for when it opens"
+msgstr "Envoyée à la fermeture d'un livre, récupérée à son ouverture"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Offer to go further on"
+msgstr "Proposer d'aller plus loin"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "When Grimmory has the book further on, from another device"
+msgstr "Quand Grimmory a le livre plus avancé, depuis un autre appareil"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Test the connection"
+msgstr "Tester la connexion"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Progress sync points to Grimmory too"
+msgstr "La synchro de progression vise aussi Grimmory"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "KOReader's Progress sync sends to the same server. Keep only one of the two on"
+msgstr "La synchro de progression de KOReader envoie au même serveur. N'en gardez qu'une des deux activée"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Next"
+msgstr "Suivant"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Password"
+msgstr "Mot de passe"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "User name"
+msgstr "Nom d'utilisateur"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "The password of this KOReader user"
+msgstr "Le mot de passe de cet utilisateur KOReader"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "No network. Turn on Wi-Fi and try again."
+msgstr "Pas de réseau. Activez le Wi-Fi et réessayez."
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Grimmory did not answer."
+msgstr "Grimmory n'a pas répondu."
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Connected to Grimmory."
+msgstr "Connecté à Grimmory."
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Further on in Grimmory"
+msgstr "Plus avancé dans Grimmory"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Go there"
+msgstr "Y aller"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Stay here"
+msgstr "Rester ici"
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Grimmory has this book at %1%, from %2."
+msgstr "Grimmory a ce livre à %1 %, depuis %2."
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Grimmory has this book at %1%."
+msgstr "Grimmory a ce livre à %1 %."
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Grimmory refused the account. Check the KOReader user in Grimmory (Settings > Devices > KOReader) and that its sync is on."
+msgstr "Grimmory a refusé le compte. Vérifiez l'utilisateur KOReader dans Grimmory (Réglages > Appareils > KOReader) et que sa synchro est activée."
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "No Grimmory at that address."
+msgstr "Aucun Grimmory à cette adresse."
+
+#: aleph_grimmory.lua aleph_settings_page.lua
+msgid "Set the server and the account first."
+msgstr "Indiquez d'abord le serveur et le compte."
