@@ -745,7 +745,7 @@ local function libraryBody(page, w)
                 sub = G.url() or _("Not set"), sub_data = G.url() ~= nil,
                 h = 64, chevron = true, action = { kind = "grimmory-url" } }),
             MenuUI.row(iw, { icon = "key-round", label = _("KOReader user in Grimmory"),
-                sub = G.configured() and G.user() or _("Made in Grimmory: Settings > Devices > KOReader"),
+                sub = G.configured() and G.user() or _("Made in Grimmory, or set up by signing in to your Grimmory account below"),
                 h = 64, chevron = true, action = { kind = "grimmory-account" } }),
         }
         if G.configured() then
@@ -766,6 +766,11 @@ local function libraryBody(page, w)
                 g_rows[#g_rows + 1] = MenuUI.row(iw, { icon = "clock", label = _("Waiting to send"),
                     sub = T(_("%1 waiting for the internet"), waiting),
                     h = 64, chevron = true, action = { kind = "grimmory-flush" } })
+            end
+            local by = require("aleph_grimmory_others").owns("progress")
+            if by then
+                g_rows[#g_rows + 1] = MenuUI.row(iw, { icon = "info", label = T(_("%1 plugin is on"), require("aleph_grimmory_others").label(by)),
+                    sub = _("It sends the progress to Grimmory: Aleph leaves it to it"), h = 64 })
             end
             if G.kosyncSameServer() then
                 g_rows[#g_rows + 1] = MenuUI.row(iw, { icon = "info", label = _("Progress sync points to Grimmory too"),
@@ -799,7 +804,8 @@ local function libraryBody(page, w)
             local toggles = {
                 { "grimmory_status", "book-check", _("Send the status"), _("Finished, On hold, Reading") },
                 { "grimmory_stars", "star", _("Send the stars"), _("As Grimmory's rating (out of 10)") },
-                { "grimmory_notes", "highlighter", _("Send the highlights"), _("As one note, KOReader highlights, on the book") },
+                { "grimmory_highlights", "highlighter", _("Sync the highlights"), _("Both ways, as Grimmory's own highlights (EPUB)") },
+                { "grimmory_notes", "file-text", _("Highlights as a note"), _("Other books: one note, KOReader highlights, on the book") },
                 { "grimmory_sessions", "clock", _("Send reading sessions"), _("For Grimmory's reading statistics") },
                 { "grimmory_shelves", "layers-2", _("Shelves as collections"), _("Books join collections named after their Grimmory shelves") },
             }
@@ -807,6 +813,12 @@ local function libraryBody(page, w)
                 local on = prefs.on(t[1])
                 a_rows[#a_rows + 1] = MenuUI.row(iw, { icon = t[2], label = t[3], sub = on and t[4] or _("Off"),
                     h = 64, toggle = on, action = { kind = "grimmory-toggle", key = t[1] } })
+            end
+            local Others = require("aleph_grimmory_others")
+            local by = Others.owns("annotations") or Others.owns("sessions")
+            if by then
+                a_rows[#a_rows + 1] = MenuUI.row(iw, { icon = "info", label = T(_("%1 plugin is on"), Others.label(by)),
+                    sub = _("It sends the highlights and reading sessions: Aleph leaves them to it"), h = 64 })
             end
             local waiting = #Sync.ops()
             if waiting > 0 then

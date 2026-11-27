@@ -332,6 +332,7 @@ function Board:onReaderReady()
     -- book, and the offer to go there (aleph_grimmory.lua).
     try(function() require("aleph_grimmory").open(self.ui) end)
     try(function() require("aleph_grimmory_sync").open(self.ui) end)
+    try(function() require("aleph_grimmory_highlights").open(self.ui) end)
     -- The memory diary: now, then every 10 minutes while reading.
     try(function()
         local Mem = require("aleph_mem")
@@ -356,12 +357,19 @@ function Board:onDocSettingsItemsChanged(file, doc_settings)
     -- Aleph for Grimmory modification, 2026-11-27: status and stars to Grimmory.
     try(function() require("aleph_grimmory_sync").docChanged(file, doc_settings) end)
 end
+-- Aleph for Grimmory modification, 2026-11-27: a highlight added, changed
+-- or removed goes to Grimmory a few seconds later (aleph_grimmory_highlights.lua).
+function Board:onAnnotationsModified()
+    if not self.ui.document then return end
+    try(function() require("aleph_grimmory_highlights").changed() end)
+end
 -- Back online: what waits for Goodreads is sent.
 function Board:onNetworkConnected()
     -- Aleph for Grimmory modification, 2026-11-27: positions waiting for
     -- Grimmory are sent.
     try(function() require("aleph_grimmory").flush() end)
     try(function() require("aleph_grimmory_sync").flush() end)
+    try(function() require("aleph_grimmory_highlights").connected() end)
     local Core = package.loaded["aleph_gr"]
     if not Core then return end
     try(Core.flush)
@@ -424,6 +432,8 @@ function Board:onCloseDocument()
     try(function() require("aleph_grimmory").close(self.ui) end)
     -- Its session, status, stars and highlights (aleph_grimmory_sync.lua).
     try(function() require("aleph_grimmory_sync").close(self.ui) end)
+    -- Highlights as Grimmory's own (aleph_grimmory_highlights.lua).
+    try(function() require("aleph_grimmory_highlights").close(self.ui) end)
     -- The book's entry in the library, made again from the reader's own
     -- settings: Home is right the first time it is drawn after the book,
     -- with no scan of the whole library (aleph_local.lua).

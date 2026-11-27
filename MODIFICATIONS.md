@@ -1,5 +1,12 @@
 # Aleph (formerly Reading Board) — modifications, 2026-11-07 to 2026-11-15
 
+## 2026-11-27 — 1.3.0-grimmory.3 (Aleph for Grimmory fork)
+
+- **Highlights as Grimmory's own** (new aleph_grimmory_highlights.lua; aleph_grimmory_cfi.lua, aleph_grimmory_annotations.lua and aleph_slaxml.lua taken from ManorianOTP's Grimmory-KOReader-Client, MIT, see THIRD_PARTY_NOTICES.md): an EPUB's highlights synced both ways with Grimmory's annotations (/api/v1/annotations) through EPUB CFI, when it opens (main.lua Board:onReaderReady), a few seconds after a highlight changes (new Board:onAnnotationsModified), when Wi-Fi comes back and when it closes. Three-way merge against the last agreed state (kept per book in aleph_grimmory_state.lua, ann); conflicts are left as they are on each side. Setting "Sync the highlights" (grimmory_highlights); the "KOReader highlights" note is kept for other books.
+- **One account**: signing in to the Grimmory account fetches its KOReader user (/api/v1/koreader-users/me), or creates one with a password nobody types, turns its sync on and sets up progress sync with it, unless progress sync was already set by hand (S.workLogin).
+- **Other Grimmory plugins** (new aleph_grimmory_others.lua): with Grimmory's plugin or Grimmory Sync installed and on, Aleph does not send what they send (progress; highlights and sessions when on in them), and its settings say so.
+- **Tests**: tests/grimmory_highlights_test.lua (73 checks: CFI round trips on small EPUB trees from Grimmory-KOReader-Client's tests, the merge against a pretend server, the single account, the other plugins, the reader hooks). 208 checks in all.
+
 ## 2026-11-27 — 1.3.0-grimmory.2 (Aleph for Grimmory fork)
 
 - **Fixes** (after review): signing out of the Grimmory account forgets what was sent (aleph_grimmory_sync.lua S.logout); when every highlight of a book is removed, its "KOReader highlights" note is deleted in Grimmory (Api:deleteNote); Test the connection, signing in, Sync with Grimmory now and Browse Grimmory turn Wi-Fi on first when it is off (G.withNetwork, KOReader's NetworkMgr:runWhenOnline). Tests: 135 checks.

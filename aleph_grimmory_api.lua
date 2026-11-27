@@ -159,6 +159,40 @@ function Api:deleteNote(note_id)
     return self:call("DELETE", "/api/v1/book-notes/" .. tostring(note_id))
 end
 
+-- The KOReader user of the signed-in account (what Grimmory's KOReader
+-- interface, aleph_grimmory.lua, signs in with).
+function Api:koreaderUser()
+    local code, data = self:call("GET", "/api/v1/koreader-users/me")
+    return code, type(data) == "table" and data or nil
+end
+
+function Api:setKoreaderUser(user, password)
+    return self:call("PUT", "/api/v1/koreader-users/me", { username = user, password = password })
+end
+
+function Api:setKoreaderSync(on)
+    return self:call("PATCH", "/api/v1/koreader-users/me/sync?enabled=" .. tostring(on and true or false))
+end
+
+-- Annotations (highlights with a CFI range): Grimmory's own, shown in its reader.
+function Api:annotations(book_id)
+    local code, data = self:call("GET", "/api/v1/annotations/book/" .. tostring(book_id))
+    return code, type(data) == "table" and data or nil
+end
+
+function Api:createAnnotation(body)
+    return self:call("POST", "/api/v1/annotations", body)
+end
+
+-- body: { color, style, note } (the range and text never change)
+function Api:updateAnnotation(id, body)
+    return self:call("PUT", "/api/v1/annotations/" .. tostring(id), body)
+end
+
+function Api:deleteAnnotation(id)
+    return self:call("DELETE", "/api/v1/annotations/" .. tostring(id))
+end
+
 function Api:session(s)
     return self:call("POST", "/api/v1/reading-sessions", s)
 end
@@ -179,6 +213,31 @@ end
 
 -- KOReader's status of a book -> Grimmory's (nil: leave Grimmory's as it is).
 local STATUS = { complete = "READ", reading = "READING", abandoned = "PAUSED", new = "UNREAD" }
+function Api.md5(text) return require("ffi/sha2").md5(text) end
+
+-- The KOReader user name and key (MD5) from koreader-users/me, or nil.
+function Api.kosyncFrom(me)
+    if type(me) ~= "table" or type(me.username) ~= "string" or me.username == "" then return nil end
+    local key = type(me.passwordMD5) == "string" and me.passwordMD5 ~= "" and me.passwordMD5:lower() or nil
+    if not key and type(me.password) == "string" and me.password ~= "" then key = Api.md5(me.password) end
+    if not key then return nil end
+    return { user = me.username, key = key }
+end
+
+-- A password for a KOReader user Aleph makes: nobody types it.
+function Api.newPassword()
+    local f = io.open("/dev/urandom", "rb")
+    local bytes = f and f:read(12)
+    if f then f:close() end
+    if not bytes or #bytes < 12 then
+        math.randomseed(os.time() + math.floor((os.clock() * 1e6) % 1e6))
+        local t = {}
+        for i = 1, 12 do t[i] = string.char(math.random(0, 255)) end
+        bytes = table.concat(t)
+    end
+    return (bytes:gsub(".", function(c) return string.format("%02x", c:byte()) end))
+end
+
 function Api.statusFor(koreader_status) return STATUS[koreader_status] end
 
 -- KOReader's stars (1 to 5) -> Grimmory's rating (1 to 10); none -> nil.

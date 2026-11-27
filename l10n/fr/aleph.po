@@ -7106,10 +7106,6 @@ msgid "As Grimmory's rating (out of 10)"
 msgstr "Comme note Grimmory (sur 10)"
 
 #: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
-msgid "As one note, KOReader highlights, on the book"
-msgstr "Dans une note, KOReader highlights, sur le livre"
-
-#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
 msgid "Asking Grimmory…"
 msgstr "Interrogation de Grimmory…"
 
@@ -7202,10 +7198,6 @@ msgid "Send reading sessions"
 msgstr "Envoyer les sessions de lecture"
 
 #: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
-msgid "Send the highlights"
-msgstr "Envoyer les surlignages"
-
-#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
 msgid "Send the status"
 msgstr "Envoyer le statut"
 
@@ -7268,3 +7260,33 @@ msgstr "Trop d'essais. Attendez quelques minutes et réessayez."
 #: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
 msgid "Used once to sign in, never kept"
 msgstr "Utilisé une fois pour se connecter, jamais conservé"
+
+msgid "%1 highlights were changed both here and in Grimmory: each side keeps its own."
+msgstr "%1 surlignages ont été modifiés ici et dans Grimmory : chaque côté garde le sien."
+
+msgid "Sync the highlights"
+msgstr "Synchroniser les surlignages"
+
+msgid "Both ways, as Grimmory's own highlights (EPUB)"
+msgstr "Dans les deux sens, comme surlignages de Grimmory (EPUB)"
+
+msgid "Highlights as a note"
+msgstr "Surlignages en note"
+
+msgid "Other books: one note, KOReader highlights, on the book"
+msgstr "Autres livres : une note, KOReader highlights, sur le livre"
+
+msgid "%1 plugin is on"
+msgstr "Le plugin %1 est actif"
+
+msgid "It sends the highlights and reading sessions: Aleph leaves them to it"
+msgstr "Il envoie les surlignages et les sessions de lecture : Aleph le laisse faire"
+
+msgid "It sends the progress to Grimmory: Aleph leaves it to it"
+msgstr "Il envoie la progression à Grimmory : Aleph le laisse faire"
+
+msgid "Signed in to Grimmory. Progress sync is set up too."
+msgstr "Connecté à Grimmory. La synchro de la progression est aussi configurée."
+
+msgid "Made in Grimmory, or set up by signing in to your Grimmory account below"
+msgstr "Créé dans Grimmory, ou configuré en se connectant à votre compte Grimmory plus bas"

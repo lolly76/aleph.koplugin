@@ -8,8 +8,10 @@ Aleph keeps Grimmory up to date with what happens on the device:
   a book opens     the reading session starts
   the book closes  the session (when a minute or more) goes to Grimmory's
                    reading statistics; KOReader's status of the book
-                   (Finished, On hold...), its stars and its highlights
-                   (one note, "KOReader highlights") when they changed
+                   (Finished, On hold...), its stars and, for books
+                   other than EPUB, its highlights (one note, "KOReader
+                   highlights") when they changed; an EPUB's highlights go
+                   as Grimmory's own (aleph_grimmory_highlights.lua)
   status or stars changed in the file browser: sent too
 
 Offline, these wait in a queue (grimmory_ops) and go when Wi-Fi is back.
@@ -231,6 +233,31 @@ function S.workOps(plan)
     return r
 end
 
+-- Signs in; with plan.kosync, also gets (or makes) the account's KOReader
+-- user and turns its sync on. Returns { code, kosync = { user, key } }.
+function S.workLogin(plan)
+    local Api = require("aleph_grimmory_api")
+    local api = apiFor(plan)
+    local code = api:login(plan.user, plan.password)
+    if code ~= 200 or not plan.kosync then return { code = code } end
+    local r = { code = 200 }
+    local c, me = api:koreaderUser()
+    local creds = c == 200 and Api.kosyncFrom(me) or nil
+    if not creds and (c == 200 or c == 404) then
+        local password = Api.newPassword()
+        local c2 = api:setKoreaderUser(plan.user, password)
+        if c2 and c2 >= 200 and c2 < 300 then
+            creds = { user = plan.user, key = Api.md5(password) }
+            me = nil
+        end
+    end
+    if creds then
+        if not (type(me) == "table" and me.syncEnabled == true) then api:setKoreaderSync(true) end
+        r.kosync = creds
+    end
+    return r
+end
+
 -- Every book and shelf, made small: { books = { { id, title, authors, isbn13,
 -- isbn10, fileName, kb } }, shelves = { { id, name, ids = { book ids } } } }.
 function S.workLibrary(plan)
@@ -320,15 +347,20 @@ function S.login(user, password, done)
     local _ = require("aleph_gettext")
     if not require("aleph_grimmory").url() then return done(false, _("Set the server and the account first.")) end
     if not online() then return require("aleph_grimmory").withNetwork(function() S.login(user, password, done) end) end
-    S._run("login", function(plan)
-        local api = apiFor(plan)
-        return { code = api:login(plan.user, plan.password) }
-    end, { tokens = {}, user = user, password = password }, function(r)
+    local G = require("aleph_grimmory")
+    S._run("login", S.workLogin, { tokens = {}, user = user, password = password,
+        kosync = not G.configured() }, function(r)
         local code = r and r.code
         if code == 200 then
             local t = S.tokens()
             t.user = user
             saveTokens(t)
+            -- One account: the KOReader user for progress comes with it.
+            if r.kosync and r.kosync.user and r.kosync.key and not G.configured() then
+                Prefs.set("grimmory_user", r.kosync.user)
+                Prefs.set("grimmory_key", r.kosync.key)
+                return done(true, _("Signed in to Grimmory. Progress sync is set up too."))
+            end
             return done(true, _("Signed in to Grimmory."))
         end
         if code == 401 or code == 403 then return done(false, _("Grimmory refused the user name or password.")) end
@@ -344,6 +376,7 @@ function S.logout()
     Prefs.set("grimmory_ops", nil)
     local st = S.state()
     st.sent = {}
+    st.ann = nil
     S.saveState()
 end
 
@@ -484,8 +517,12 @@ local function enqueueAll(ops)
     Prefs.set("grimmory_ops", q)
 end
 
-local function optsNow()
-    return { status = Prefs.on("grimmory_status"), stars = Prefs.on("grimmory_stars"), notes = Prefs.on("grimmory_notes") }
+local function optsNow(path)
+    local others = require("aleph_grimmory_others")
+    local notes = Prefs.on("grimmory_notes") and not others.owns("annotations")
+    -- An EPUB whose highlights go as real Grimmory highlights has no note.
+    if notes and path and require("aleph_grimmory_highlights").handles(path) then notes = false end
+    return { status = Prefs.on("grimmory_status"), stars = Prefs.on("grimmory_stars"), notes = notes }
 end
 
 -- A book's status, stars and highlights from its settings.
@@ -525,7 +562,8 @@ function S.close(ui)
     if not S.signedIn() or not ui or not ui.document then return end
     local path = ui.document.file
     local ops = {}
-    if session and session.path == path and Prefs.on("grimmory_sessions") then
+    if session and session.path == path and Prefs.on("grimmory_sessions")
+            and not require("aleph_grimmory_others").owns("sessions") then
         local pct, pos = position(ui)
         ops[#ops + 1] = { op = "session", path = path, time = os.time(), body_parts = {
             started = session.started, ended = os.time(), from = session.from, to = pct,
@@ -535,7 +573,7 @@ function S.close(ui)
     local id = S.idOf(path)
     local book = bookFrom(path, ui.doc_settings)
     local sent = id and S.state().sent[id] or nil
-    for _i, op in ipairs(S.changes(book, sent, optsNow())) do ops[#ops + 1] = op end
+    for _i, op in ipairs(S.changes(book, sent, optsNow(path))) do ops[#ops + 1] = op end
     -- The session's body is made now its book id may be known (or when sent).
     S.finishSessions(ops)
     enqueueAll(ops)
@@ -567,7 +605,7 @@ end
 -- Status or stars changed from the file browser (or the book's page).
 function S.docChanged(file, doc_settings)
     if not S.signedIn() or not file then return end
-    local opts = optsNow()
+    local opts = optsNow(file)
     opts.notes = false
     local id = S.idOf(file)
     local ops = S.changes(bookFrom(file, doc_settings), id and S.state().sent[id] or nil, opts)

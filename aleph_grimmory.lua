@@ -121,7 +121,10 @@ function G.configured()
     return G.url() ~= nil and G.user() ~= nil and type(p.grimmory_key) == "string" and p.grimmory_key ~= ""
 end
 -- On once an account is set, unless turned off.
-function G.enabled() return G.configured() and Prefs.on("grimmory_on") end
+function G.enabled()
+    return G.configured() and Prefs.on("grimmory_on")
+        and not require("aleph_grimmory_others").owns("progress")
+end
 
 function G.setAccount(user, password)
     Prefs.set("grimmory_user", user ~= "" and user or nil)

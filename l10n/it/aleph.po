@@ -7106,10 +7106,6 @@ msgid "As Grimmory's rating (out of 10)"
 msgstr ""
 
 #: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
-msgid "As one note, KOReader highlights, on the book"
-msgstr ""
-
-#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
 msgid "Asking Grimmory…"
 msgstr ""
 
@@ -7202,10 +7198,6 @@ msgid "Send reading sessions"
 msgstr ""
 
 #: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
-msgid "Send the highlights"
-msgstr ""
-
-#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
 msgid "Send the status"
 msgstr ""
 
@@ -7267,4 +7259,34 @@ msgstr ""
 
 #: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
 msgid "Used once to sign in, never kept"
+msgstr ""
+
+msgid "%1 highlights were changed both here and in Grimmory: each side keeps its own."
+msgstr ""
+
+msgid "Sync the highlights"
+msgstr ""
+
+msgid "Both ways, as Grimmory's own highlights (EPUB)"
+msgstr ""
+
+msgid "Highlights as a note"
+msgstr ""
+
+msgid "Other books: one note, KOReader highlights, on the book"
+msgstr ""
+
+msgid "%1 plugin is on"
+msgstr ""
+
+msgid "It sends the highlights and reading sessions: Aleph leaves them to it"
+msgstr ""
+
+msgid "It sends the progress to Grimmory: Aleph leaves it to it"
+msgstr ""
+
+msgid "Signed in to Grimmory. Progress sync is set up too."
+msgstr ""
+
+msgid "Made in Grimmory, or set up by signing in to your Grimmory account below"
 msgstr ""

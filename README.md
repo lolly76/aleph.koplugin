@@ -251,6 +251,8 @@ To add a language, copy `l10n/aleph.pot` to `l10n/<code>/aleph.po`, where `<code
 
 Optional, off until a server and an account are set. Aleph keeps each book's reading position on a self-hosted [Grimmory](https://github.com/grimmory-tools/grimmory) library, through the KOReader sync interface Grimmory provides (`/api/koreader`).
 
+The simplest way: sign in to your **Grimmory account** (below). Aleph then fetches the account's KOReader user, or creates it, and turns its sync on: nothing else to set. To set it by hand instead:
+
 1. In Grimmory, open **Settings > Devices > KOReader**, create the KOReader user and turn its sync on.
 2. In Aleph, open **Settings > Library > Grimmory**: set the server address (for example `http://192.168.1.10:6060`), then that user's name and password. Aleph tests the connection and keeps only the password's MD5, as KOReader's Progress sync does.
 
@@ -271,9 +273,14 @@ Progress uses Grimmory's KOReader user. Everything else uses your own Grimmory a
 - For matched books, Aleph sends, each switch on unless turned off:
   - **Status**: Finished, On hold and Reading (Grimmory's Read, Paused and Reading), when it changes in KOReader. Reading and Read also follow the percentage, through progress sync.
   - **Stars**: KOReader's 1 to 5 stars as Grimmory's rating out of 10 (4.5 stars is 9).
-  - **Highlights**: all of a book's highlights and notes as one Grimmory note titled "KOReader highlights", updated when they change. Grimmory's own highlights need positions in its web reader's format, which Aleph cannot work out on the device, so they are not created.
+  - **Highlights** (EPUB): both ways, as Grimmory's own highlights, shown in its web reader with their color, style and note. They are synced when the book opens, a few seconds after a highlight changes, and when it closes. Positions are converted between KOReader's and the EPUB CFI Grimmory uses (code from ManorianOTP's Grimmory-KOReader-Client, MIT). A highlight removed on one side is removed on the other; one changed differently on both sides is left as each side has it. Bookmarks stay on the device.
+  - **Highlights as a note** (other books, such as PDF): all of a book's highlights and notes as one Grimmory note titled "KOReader highlights", updated when they change.
   - **Reading sessions**: each time a book is open for a minute or more, for Grimmory's reading statistics.
   - **Shelves as collections**: books join KOReader collections named after their Grimmory shelves, and leave them when Grimmory no longer has them there. Books you put in those collections yourself are never taken out.
+
+**Other Grimmory plugins.** When Grimmory's own plugin (grimmory.koplugin) or ManorianOTP's Grimmory Sync is installed and on, Aleph leaves them what they do (progress; highlights and sessions, when they send them) so nothing reaches Grimmory twice, and says so in its settings. Browsing, downloads, status, stars and shelves stay with Aleph.
+
+Without a Grimmory server or account, none of this runs: Aleph works as it always has.
 - Offline, changes wait and are sent when Wi-Fi is back, or from **Waiting to send**.
 
 ## Optional integrations
