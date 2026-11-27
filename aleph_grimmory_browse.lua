@@ -192,6 +192,10 @@ end
 
 function B.open(browser)
     if not Sync().signedIn() then return toast(_("Sign in to Grimmory first."), false) end
+    local okc, connected = pcall(function() return require("ui/network/manager"):isConnected() end)
+    if okc and not connected then
+        return require("aleph_grimmory").withNetwork(function() B.open(browser) end)
+    end
     B.browser = browser
     local Menu = require("ui/widget/menu")
     local Screen = require("device").screen

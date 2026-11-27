@@ -155,6 +155,10 @@ function Api:saveNote(note)
     return self:call("POST", "/api/v1/book-notes", note)
 end
 
+function Api:deleteNote(note_id)
+    return self:call("DELETE", "/api/v1/book-notes/" .. tostring(note_id))
+end
+
 function Api:session(s)
     return self:call("POST", "/api/v1/reading-sessions", s)
 end

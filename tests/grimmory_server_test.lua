@@ -49,6 +49,13 @@ local function route(o)
     if h["Authorization"] ~= "Bearer " .. server.access then return 401 end
     local id = path:match("^/api/v1/book%-notes/book/(%d+)$")
     if id then return 200, server.notes[tonumber(id)] or {} end
+    local del = path:match("^/api/v1/book%-notes/(%d+)$")
+    if o.method == "DELETE" and del then
+        for bid, list in pairs(server.notes) do
+            for i, n in ipairs(list) do if n.id == tonumber(del) then table.remove(list, i); return 204 end end
+        end
+        return 404
+    end
     if o.method == "POST" and path == "/api/v1/book-notes" then
         local list = server.notes[o.json.bookId] or {}
         server.notes[o.json.bookId] = list
@@ -138,6 +145,12 @@ eq(r.done[1] and r.done[2] and r.done[3] and r.done[4], true, "all sent"); eq(r.
 eq(r.note_ids[7], 100, "note made"); eq(#server.notes[7], 1, "one note")
 r = S.workOps({ base = "http://h", tokens = api.tokens, tokens_out = plan.tokens_out, ops = { { op = "notes", id = 7, content = "> two" } } })
 eq(#server.notes[7], 1, "still one note (found by its title)"); eq(server.notes[7][1].content, "> two", "note changed")
+
+-- Every highlight removed: the note is found by its title and deleted
+r = S.workOps({ base = "http://h", tokens = api.tokens, tokens_out = plan.tokens_out, ops = { { op = "notes", id = 7, content = false } } })
+eq(r.done[1], true, "deleted"); eq(#server.notes[7], 0, "no note left")
+r = S.workOps({ base = "http://h", tokens = api.tokens, tokens_out = plan.tokens_out, ops = { { op = "notes", id = 7, content = false } } })
+eq(r.done[1], true, "nothing to delete is fine")
 
 -- Library: books made small, shelves with their books
 local lib = S.workLibrary({ base = "http://h", tokens = api.tokens, tokens_out = plan.tokens_out, shelves = true })

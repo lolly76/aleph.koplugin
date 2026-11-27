@@ -145,6 +145,9 @@ function S.changes(book, sent, opts)
         local digest = content and Api.digest(content) or nil
         if content and digest ~= sent.notes then
             ops[#ops + 1] = { op = "notes", path = book.path, content = content, digest = digest, time = now }
+        elseif not content and sent.notes then
+            -- Every highlight removed: the note goes too.
+            ops[#ops + 1] = { op = "notes", path = book.path, content = false, time = now }
         end
     end
     return ops
@@ -193,6 +196,17 @@ function S.workOps(plan)
             code = api:setRating(op.id, op.rating)
         elseif op.op == "session" then
             code = api:session(op.body)
+        elseif op.op == "notes" and not op.content then
+            local note_id = op.note_id
+            if not note_id then
+                local c, notes = api:notes(op.id)
+                code = c
+                for _j, n in ipairs(notes or {}) do
+                    if n.title == require("aleph_grimmory_api").NOTE_TITLE then note_id = n.id end
+                end
+            end
+            -- (No note found: nothing to delete, and code is the lookup's.)
+            if note_id then code = api:deleteNote(note_id) end
         elseif op.op == "notes" then
             local note_id = op.note_id
             if not note_id then
@@ -305,7 +319,7 @@ end
 function S.login(user, password, done)
     local _ = require("aleph_gettext")
     if not require("aleph_grimmory").url() then return done(false, _("Set the server and the account first.")) end
-    if not online() then return done(false, _("No network. Turn on Wi-Fi and try again.")) end
+    if not online() then return require("aleph_grimmory").withNetwork(function() S.login(user, password, done) end) end
     S._run("login", function(plan)
         local api = apiFor(plan)
         return { code = api:login(plan.user, plan.password) }
@@ -323,9 +337,14 @@ function S.login(user, password, done)
     end)
 end
 
+-- Signing out forgets what was sent (another account may sign in next);
+-- which local book is which Grimmory book is kept until the next match.
 function S.logout()
     Prefs.set("grimmory_api", nil)
     Prefs.set("grimmory_ops", nil)
+    local st = S.state()
+    st.sent = {}
+    S.saveState()
 end
 
 -- The library's books, as matching wants them.
@@ -373,7 +392,11 @@ function S.syncLibrary(done)
     local _ = require("aleph_gettext")
     if running.library then if done then done(nil, _("Already running.")) end return end
     if not S.signedIn() then if done then done(nil, _("Sign in to Grimmory first.")) end return end
-    if not online() then if done then done(nil, _("No network. Turn on Wi-Fi and try again.")) end return end
+    if not online() then
+        -- Asked for by the reader (done given): Wi-Fi turned on first.
+        if done then require("aleph_grimmory").withNetwork(function() S.syncLibrary(done) end) end
+        return
+    end
     local shelves_on = Prefs.on("grimmory_shelves")
     S._run("library", S.workLibrary, { shelves = shelves_on }, function(r)
         if not r or r.code ~= 200 then
@@ -433,6 +456,7 @@ function S.flush(done)
                     local sent = st.sent[op.id] or {}
                     if op.op == "status" then sent.status = op.status
                     elseif op.op == "rating" then sent.rating = op.rating
+                    elseif op.op == "notes" and not op.content then sent.notes = nil; sent.note_id = nil
                     elseif op.op == "notes" then sent.notes = op.digest; sent.note_id = r.note_ids[op.id] or sent.note_id end
                     st.sent[op.id] = sent
                 elseif r.failed[i] ~= nil then

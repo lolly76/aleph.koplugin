@@ -273,6 +273,19 @@ local function online()
     return ok and on
 end
 
+-- Runs fn now when there is a network; otherwise KOReader turns Wi-Fi on
+-- (asking first, as set in its network settings) and runs it once online.
+-- For what the reader asked for (a test, signing in, Sync now), never for
+-- what runs on its own.
+function G.withNetwork(fn)
+    if online() then return fn() end
+    local ok = pcall(function()
+        local NetworkMgr = require("ui/network/manager")
+        NetworkMgr:runWhenOnline(fn)
+    end)
+    if not ok then return fn() end
+end
+
 -- Sends what waits, when there is a network. done(result, why) optional:
 -- result nil and why "busy", "off", "offline", "empty" or "failed".
 function G.flush(done)
@@ -387,7 +400,7 @@ end
 function G.test(done)
     local _ = require("aleph_gettext")
     if not G.configured() then return done(false, _("Set the server and the account first.")) end
-    if not online() then return done(false, _("No network. Turn on Wi-Fi and try again.")) end
+    if not online() then return G.withNetwork(function() G.test(done) end) end
     G.run({ auth = true }, function(r)
         if not r then return done(false, _("Grimmory did not answer.")) end
         if r.auth == 200 then return done(true, _("Connected to Grimmory.")) end

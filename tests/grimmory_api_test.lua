@@ -103,6 +103,9 @@ eq(#S.changes({ path = "a", status = "complete", stars = 4, highlights = { { tex
 eq(#S.changes({ path = "a", status = "reading" }, nil, {}), 0, "reading left to the percentage")
 eq(#S.changes({ path = "a", status = "reading" }, { status = "PAUSED" }, {}), 1, "back to reading")
 eq(#S.changes({ path = "a", status = "complete", stars = 4 }, nil, { status = false, stars = false }), 0, "turned off")
+local del = S.changes({ path = "a", highlights = {} }, { notes = "old" }, { status = false, stars = false })
+eq(#del, 1, "highlights all removed"); eq(del[1].content, false, "the note is deleted")
+eq(#S.changes({ path = "a", highlights = {} }, {}, {}), 0, "never sent, nothing to delete")
 
 -- Ready: only matched books
 local ready = S.ready({ { op = "status", path = "a" }, { op = "status", path = "b" } }, { a = 5 })
@@ -137,6 +140,11 @@ S.flush()
 local left = S.ops()
 eq(#left, 2, "two left"); eq(left[1].path, "b", "failed kept"); eq(left[1].tries, 1, "try counted"); eq(left[2].path, "c", "unmatched kept")
 eq(S.state().sent[5].status, "READ", "sent remembered")
+
+-- Signing out forgets what was sent
+S.logout()
+eq(next(S.state().sent), nil, "sent forgotten"); eq(S.state().ids.a, 5, "matches kept")
+store.aleph.grimmory_url = "http://h"
 
 -- Tokens: only what is needed kept
 S._saveTokens({ user = "a", access = "x", refresh = "y", other = "z" })
