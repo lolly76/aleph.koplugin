@@ -8,7 +8,7 @@ Aleph works with books and reading data on your device. No Aleph account or Book
 
 **This is a modified version of BookOrbit and is not an official BookOrbit release. Modified 20 November 2026.**
 
-> **Aleph for Grimmory** (this fork, modified 27 November 2026): Aleph as published by lara-2-ko, plus optional reading-progress sync with a [Grimmory](https://github.com/grimmory-tools/grimmory) server. It is not an official Aleph or BookOrbit release. See [Grimmory](#grimmory) below and MODIFICATIONS.md.
+> **Aleph for Grimmory** (this fork, modified 27 November 2026): Aleph as published by lara-2-ko, plus optional sync with a [Grimmory](https://github.com/grimmory-tools/grimmory) server: reading progress, the Grimmory library (browse and download), statuses, stars, highlights, reading sessions and shelves. It is not an official Aleph or BookOrbit release. See [Grimmory](#grimmory) below and MODIFICATIONS.md.
 
 ## Screenshots
 
@@ -262,6 +262,20 @@ Then, with Wi-Fi on:
 
 Books are matched by KOReader's partial MD5, which Grimmory also uses, so a book must be the same file as the one in Grimmory (a book downloaded from Grimmory is). A book Grimmory does not have is skipped. Requests run in a background process and stop after 25 seconds, so a slow server never holds up the reader. Turn off KOReader's own **Progress sync** if it points to the same server, or both will send; Aleph says so in its settings.
 
+### Grimmory account
+
+Progress uses Grimmory's KOReader user. Everything else uses your own Grimmory account, the one you sign in with on its website: **Settings > Library > Grimmory account**. The password is used once to sign in and never kept; Aleph keeps Grimmory's tokens, renewed as they are used (sign in again after 30 days without a connection). Accounts that sign in only through OIDC (single sign-on) cannot sign in from Aleph.
+
+- **Browse Grimmory** (also the gesture **Aleph: Grimmory library**): recently added books, search (title, series, author, genre, tag, ISBN) and your shelves. Tap a book to download it into the **Download folder** (the library's first folder unless you choose one). Books already on the device have a check mark.
+- **Sync with Grimmory now** matches the library's books with Grimmory's: books downloaded from Aleph at once, others by the same file name and size, the same ISBN, or the same title and first author (only when exactly one Grimmory book has them). It runs after signing in and once a day when Home opens.
+- For matched books, Aleph sends, each switch on unless turned off:
+  - **Status**: Finished, On hold and Reading (Grimmory's Read, Paused and Reading), when it changes in KOReader. Reading and Read also follow the percentage, through progress sync.
+  - **Stars**: KOReader's 1 to 5 stars as Grimmory's rating out of 10 (4.5 stars is 9).
+  - **Highlights**: all of a book's highlights and notes as one Grimmory note titled "KOReader highlights", updated when they change. Grimmory's own highlights need positions in its web reader's format, which Aleph cannot work out on the device, so they are not created.
+  - **Reading sessions**: each time a book is open for a minute or more, for Grimmory's reading statistics.
+  - **Shelves as collections**: books join KOReader collections named after their Grimmory shelves, and leave them when Grimmory no longer has them there. Books you put in those collections yourself are never taken out.
+- Offline, changes wait and are sent when Wi-Fi is back, or from **Waiting to send**.
+
 ## Optional integrations
 
 | Component | Purpose |
@@ -277,7 +291,7 @@ Books are matched by KOReader's partial MD5, which Grimmory also uses, so a book
 | BT Manager - HID Passthrough | A Bluetooth switch in the reader menu |
 | Kobo (OGKevin's kobo.koplugin) | On the Kobos it supports Bluetooth on, the reader menu's Bluetooth switch uses it |
 | Syncery | Sync now in the reader menu; with KOSyncthing+ too, Sync runs the whole chain (Syncthing, Syncery, waiting for the other e-reader); the other e-reader's progress in the library and on book pages |
-| Grimmory server | Reading progress kept on a self-hosted Grimmory library (see [Grimmory](#grimmory)); no plugin needed |
+| Grimmory server | Reading progress, library, statuses, stars, highlights, sessions and shelves with a self-hosted Grimmory library (see [Grimmory](#grimmory)); no plugin needed |
 | Goodreads (advokatb, 0.5.0) | Not needed since 1.2.32: Aleph does its work itself with its code (MIT) and its files. While it is on, Aleph warns at each start and offers to turn it off, and sends nothing on its own |
 
 The standalone **Quick Top Bar** takes precedence over Aleph's built-in top bar. Choose which implementation to use. Other plugins or patches that replace the same reader menus, highlight panels or top menu can conflict; their combinations have not all been tested.

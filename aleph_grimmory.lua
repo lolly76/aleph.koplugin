@@ -190,37 +190,11 @@ end
 
 -- One request: status code (or nil) and the decoded JSON answer.
 function G.request(method, url, cred, body)
-    local ltn12 = require("ltn12")
-    local socketutil = require("socketutil")
-    local json = require("json")
-    local http = url:match("^https:") and require("ssl.https") or require("socket.http")
-    local out = {}
-    local data = body and json.encode(body) or nil
-    local headers = {
-        ["Accept"] = "application/vnd.koreader.v1+json",
-        ["x-auth-user"] = cred.user,
-        ["x-auth-key"] = cred.key,
+    local code, answer = require("aleph_grimmory_http").request{
+        method = method, url = url, json = body,
+        accept = "application/vnd.koreader.v1+json",
+        headers = { ["x-auth-user"] = cred.user, ["x-auth-key"] = cred.key },
     }
-    if data then
-        headers["Content-Type"] = "application/json"
-        headers["Content-Length"] = tostring(#data)
-    end
-    socketutil:set_timeout(10, 20)
-    local ok, code = pcall(function()
-        local _r, status = http.request{
-            url = url, method = method, headers = headers,
-            source = data and ltn12.source.string(data) or nil,
-            sink = ltn12.sink.table(out),
-        }
-        return status
-    end)
-    socketutil:reset_timeout()
-    code = ok and tonumber(code) or nil
-    local answer
-    if #out > 0 then
-        local okj, v = pcall(json.decode, table.concat(out))
-        if okj then answer = v end
-    end
     return code, answer
 end
 

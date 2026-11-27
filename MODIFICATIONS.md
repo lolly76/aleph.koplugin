@@ -1,5 +1,15 @@
 # Aleph (formerly Reading Board) — modifications, 2026-11-07 to 2026-11-15
 
+## 2026-11-27 — 1.3.0-grimmory.2 (Aleph for Grimmory fork)
+
+- **Grimmory account** (new aleph_grimmory_api.lua, aleph_grimmory_http.lua, aleph_grimmory_sync.lua): sign in with the reader's Grimmory account (Grimmory's /api/v1; the password is used once, the tokens are kept and renewed) in Settings > Library > Grimmory account.
+- **Browse Grimmory** (new aleph_grimmory_browse.lua; gesture "Aleph: Grimmory library", main.lua Board:onShowAlephGrimmory): recently added, search and shelves in KOReader's menu; a book downloaded with a tap into the download folder.
+- **Books matched** with Grimmory's (by file name and size, ISBN, or title and first author), after signing in and once a day when Home opens (Board:onShowAleph).
+- **Sent to Grimmory** for matched books (Board:onCloseDocument, Board:onDocSettingsItemsChanged): status, stars (out of 10), highlights as one note "KOReader highlights", reading sessions; queued offline.
+- **Shelves as collections** through aleph_calibre_collections.lua's CC.apply.
+- **HTTP** in one place (aleph_grimmory_http.lua); aleph_grimmory.lua uses it.
+- **Tests**: tests/grimmory_api_test.lua (63 checks) and tests/grimmory_server_test.lua (29 checks, against a pretend Grimmory with its routes).
+
 ## 2026-11-27 — 1.3.0-grimmory.1 (Aleph for Grimmory fork)
 
 Modified by lolly76 from Aleph 1.3.0 (lara-2-ko/aleph.koplugin). This is a modified version of BookOrbit and is not an official BookOrbit release, nor an official Aleph release.

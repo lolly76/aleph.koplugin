@@ -7076,3 +7076,195 @@ msgstr ""
 #: aleph_grimmory.lua aleph_settings_page.lua
 msgid "Set the server and the account first."
 msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "%1 books matched with Grimmory"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "%1 of %2 books matched with Grimmory"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "%1 waiting for the internet or for the book to be matched"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Aleph: Grimmory library"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Already on this device."
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Already running."
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "As Grimmory's rating (out of 10)"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "As one note, KOReader highlights, on the book"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Asking Grimmory…"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Books join collections named after their Grimmory shelves"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Browse Grimmory"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Choose a download folder first (Settings > Library > Grimmory)."
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Download folder"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Download this book?"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Downloaded: %1"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Finished, On hold, Reading"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "For Grimmory's reading statistics"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Grimmory account"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Grimmory library"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Grimmory progress"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Grimmory refused the user name or password."
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Grimmory signed this device out. Sign in again."
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Into %1"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Match the library's books with Grimmory's"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "No books here."
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "No shelves in Grimmory."
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Recently added, search and shelves; download a book"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Search Grimmory"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Search: %1"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Search…"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Send reading sessions"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Send the highlights"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Send the status"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Shelves as collections"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Shelves"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Sign in to Grimmory first."
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Sign in"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Sign out of Grimmory?"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Sign out"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Signed in as %1"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Signed in to Grimmory."
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Statuses, stars, highlights and sessions are no longer sent. Progress sync is not affected."
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Sync with Grimmory now"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "The account used on Grimmory's website"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "These books are not matched with Grimmory yet. Try Sync with Grimmory now."
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Title, series, author, genre, tag or ISBN"
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Too many tries. Wait a few minutes and try again."
+msgstr ""
+
+#: aleph_grimmory_sync.lua aleph_grimmory_browse.lua aleph_settings_page.lua
+msgid "Used once to sign in, never kept"
+msgstr ""

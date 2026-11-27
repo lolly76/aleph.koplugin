@@ -162,6 +162,8 @@ function Board:init()
     Dispatcher:registerAction("aleph_page_browser", { category = "none", event = "ShowAlephPageBrowser", title = _("Aleph: page browser"), reader = true })
     Dispatcher:registerAction("aleph_xray", { category = "none", event = "ShowAlephXray", title = _("Aleph: X-Ray"), reader = true })
     Dispatcher:registerAction("aleph_this_book", { category = "none", event = "ShowAlephThisBook", title = _("Aleph: this book"), reader = true })
+    -- Aleph for Grimmory modification, 2026-11-27 (aleph_grimmory_browse.lua).
+    Dispatcher:registerAction("aleph_grimmory", { category = "none", event = "ShowAlephGrimmory", title = _("Aleph: Grimmory library"), general = true })
     -- Gestures bound to the old action names, and the old folder left installed.
     local ui = self.ui
     UIManager:nextTick(function()
@@ -258,8 +260,16 @@ function Board:onShowAleph(quiet)
         self.browser = require("aleph_browser"):new{ plugin = self, settings = self.settings }
         UIManager:show(self.browser)
         self.browser:startScanIfDue()
+        -- Aleph for Grimmory modification, 2026-11-27: books matched with
+        -- Grimmory once a day (aleph_grimmory_sync.lua).
+        try(function() require("aleph_grimmory_sync").syncIfDue() end)
     end
     if quiet ~= true then try(function() require("aleph_shelf_guard").keep(self.browser) end) end
+    return true
+end
+-- Aleph for Grimmory modification, 2026-11-27: the gesture "Aleph: Grimmory library".
+function Board:onShowAlephGrimmory()
+    try(function() require("aleph_grimmory_browse").open(self.browser) end)
     return true
 end
 -- The board's page for a book, over the reader. True when it was shown.
@@ -321,6 +331,7 @@ function Board:onReaderReady()
     -- Aleph for Grimmory modification, 2026-11-27: where Grimmory has this
     -- book, and the offer to go there (aleph_grimmory.lua).
     try(function() require("aleph_grimmory").open(self.ui) end)
+    try(function() require("aleph_grimmory_sync").open(self.ui) end)
     -- The memory diary: now, then every 10 minutes while reading.
     try(function()
         local Mem = require("aleph_mem")
@@ -342,12 +353,15 @@ end
 function Board:onDocSettingsItemsChanged(file, doc_settings)
     if self.ui.document and self.ui.document.file ~= file then return end
     try(function() require("aleph_gr").docChanged(self.ui, file, doc_settings) end)
+    -- Aleph for Grimmory modification, 2026-11-27: status and stars to Grimmory.
+    try(function() require("aleph_grimmory_sync").docChanged(file, doc_settings) end)
 end
 -- Back online: what waits for Goodreads is sent.
 function Board:onNetworkConnected()
     -- Aleph for Grimmory modification, 2026-11-27: positions waiting for
     -- Grimmory are sent.
     try(function() require("aleph_grimmory").flush() end)
+    try(function() require("aleph_grimmory_sync").flush() end)
     local Core = package.loaded["aleph_gr"]
     if not Core then return end
     try(Core.flush)
@@ -408,6 +422,8 @@ function Board:onCloseDocument()
     -- Aleph for Grimmory modification, 2026-11-27: where it closed, sent to
     -- Grimmory (or queued until there is a network; aleph_grimmory.lua).
     try(function() require("aleph_grimmory").close(self.ui) end)
+    -- Its session, status, stars and highlights (aleph_grimmory_sync.lua).
+    try(function() require("aleph_grimmory_sync").close(self.ui) end)
     -- The book's entry in the library, made again from the reader's own
     -- settings: Home is right the first time it is drawn after the book,
     -- with no scan of the whole library (aleph_local.lua).
