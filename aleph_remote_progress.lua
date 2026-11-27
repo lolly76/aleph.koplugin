@@ -169,6 +169,16 @@ Remote.myId = myId
 function Remote.other(book)
     local mine = myId()
     local best
+    -- Aleph for Grimmory modification, 2026-11-27: what Grimmory last said
+    -- for this book (aleph_grimmory.lua), when another device sent it.
+    try(function()
+        local G = require("aleph_grimmory")
+        if not G.enabled() then return end
+        local g = G.cached(type(book) == "table" and book.md5)
+        if g and tonumber(g.pct) and g.device_id ~= mine then
+            best = { pct = math.max(0, math.min(100, tonumber(g.pct) * 100)), label = "Grimmory", time = tonumber(g.time) or 0 }
+        end
+    end)
     for _i, f in ipairs(Remote.files(book)) do
         for id, e in pairs(entriesOf(f.path) or {}) do
             if id ~= mine and type(e) == "table" and tonumber(e.percent) then

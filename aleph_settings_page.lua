@@ -735,6 +735,101 @@ local function libraryBody(page, w)
         end
     end)
     table.insert(items, MenuUI.section(w, _("Goodreads"), MenuUI.group(w, gr_rows)))
+    -- Aleph for Grimmory modification, 2026-11-27: reading progress kept on
+    -- a Grimmory server (aleph_grimmory.lua).
+    try(function()
+        local G = require("aleph_grimmory")
+        local prefs = require("aleph_prefs")
+        local g_rows = {
+            MenuUI.row(iw, { icon = "globe", label = _("Grimmory server"),
+                sub = G.url() or _("Not set"), sub_data = G.url() ~= nil,
+                h = 64, chevron = true, action = { kind = "grimmory-url" } }),
+            MenuUI.row(iw, { icon = "key-round", label = _("KOReader user in Grimmory"),
+                sub = G.configured() and G.user() or _("Made in Grimmory, or set up by signing in to your Grimmory account below"),
+                h = 64, chevron = true, action = { kind = "grimmory-account" } }),
+        }
+        if G.configured() then
+            local on = prefs.on("grimmory_on")
+            g_rows[#g_rows + 1] = MenuUI.row(iw, { icon = "refresh-cw", label = _("Keep progress in sync"),
+                sub = on and _("Sent when a book closes, asked for when it opens") or _("Off"),
+                h = 64, toggle = on, action = { kind = "grimmory-on" } })
+            if on then
+                local ask = prefs.on("grimmory_ask")
+                g_rows[#g_rows + 1] = MenuUI.row(iw, { icon = "corner-up-right", label = _("Offer to go further on"),
+                    sub = ask and _("When Grimmory has the book further on, from another device") or _("Off"),
+                    h = 64, toggle = ask, action = { kind = "grimmory-ask" } })
+            end
+            g_rows[#g_rows + 1] = MenuUI.row(iw, { icon = "cloud-check", label = _("Test the connection"),
+                h = 64, chevron = true, action = { kind = "grimmory-test" } })
+            local waiting = #G.queue()
+            if waiting > 0 then
+                g_rows[#g_rows + 1] = MenuUI.row(iw, { icon = "clock", label = _("Waiting to send"),
+                    sub = T(_("%1 waiting for the internet"), waiting),
+                    h = 64, chevron = true, action = { kind = "grimmory-flush" } })
+            end
+            local by = require("aleph_grimmory_others").owns("progress")
+            if by then
+                g_rows[#g_rows + 1] = MenuUI.row(iw, { icon = "info", label = T(_("%1 plugin is on"), require("aleph_grimmory_others").label(by)),
+                    sub = _("It sends the progress to Grimmory: Aleph leaves it to it"), h = 64 })
+            end
+            if G.kosyncSameServer() then
+                g_rows[#g_rows + 1] = MenuUI.row(iw, { icon = "info", label = _("Progress sync points to Grimmory too"),
+                    sub = _("KOReader's Progress sync sends to the same server. Keep only one of the two on"),
+                    h = 64 })
+            end
+        end
+        table.insert(items, space(nil, px(16)))
+        table.insert(items, MenuUI.section(w, _("Grimmory progress"), MenuUI.group(w, g_rows)))
+        -- The reader's Grimmory account: library, statuses, stars,
+        -- highlights, sessions and shelves (aleph_grimmory_sync.lua).
+        if not G.url() then return end
+        local Sync = require("aleph_grimmory_sync")
+        local a_rows = {
+            MenuUI.row(iw, { icon = "user", label = _("Grimmory account"),
+                sub = Sync.signedIn() and T(_("Signed in as %1"), Sync.user() or "?") or _("The account used on Grimmory's website"),
+                h = 64, chevron = true, action = { kind = Sync.signedIn() and "grimmory-logout" or "grimmory-login" } }),
+        }
+        if Sync.signedIn() then
+            a_rows[#a_rows + 1] = MenuUI.row(iw, { icon = "library", label = _("Browse Grimmory"),
+                sub = _("Recently added, search and shelves; download a book"), h = 64, chevron = true, action = { kind = "grimmory-browse" } })
+            local st = Sync.state()
+            local n = 0
+            for _p in pairs(st.ids) do n = n + 1 end
+            a_rows[#a_rows + 1] = MenuUI.row(iw, { icon = "refresh-cw", label = _("Sync with Grimmory now"),
+                sub = st.last_sync and T(_("%1 books matched with Grimmory"), n) or _("Match the library's books with Grimmory's"),
+                h = 64, chevron = true, action = { kind = "grimmory-sync" } })
+            a_rows[#a_rows + 1] = MenuUI.row(iw, { icon = "folder-open", label = _("Download folder"),
+                sub = require("aleph_grimmory_browse").folder(page.browser) or _("Not set"), sub_data = true,
+                h = 64, chevron = true, action = { kind = "grimmory-folder" } })
+            local toggles = {
+                { "grimmory_status", "book-check", _("Send the status"), _("Finished, On hold, Reading") },
+                { "grimmory_stars", "star", _("Send the stars"), _("As Grimmory's rating (out of 10)") },
+                { "grimmory_highlights", "highlighter", _("Sync the highlights"), _("Both ways, as Grimmory's own highlights (EPUB)") },
+                { "grimmory_notes", "file-text", _("Highlights as a note"), _("Other books: one note, KOReader highlights, on the book") },
+                { "grimmory_sessions", "clock", _("Send reading sessions"), _("For Grimmory's reading statistics") },
+                { "grimmory_shelves", "layers-2", _("Shelves as collections"), _("Books join collections named after their Grimmory shelves") },
+            }
+            for _i, t in ipairs(toggles) do
+                local on = prefs.on(t[1])
+                a_rows[#a_rows + 1] = MenuUI.row(iw, { icon = t[2], label = t[3], sub = on and t[4] or _("Off"),
+                    h = 64, toggle = on, action = { kind = "grimmory-toggle", key = t[1] } })
+            end
+            local Others = require("aleph_grimmory_others")
+            local by = Others.owns("annotations") or Others.owns("sessions")
+            if by then
+                a_rows[#a_rows + 1] = MenuUI.row(iw, { icon = "info", label = T(_("%1 plugin is on"), Others.label(by)),
+                    sub = _("It sends the highlights and reading sessions: Aleph leaves them to it"), h = 64 })
+            end
+            local waiting = #Sync.ops()
+            if waiting > 0 then
+                a_rows[#a_rows + 1] = MenuUI.row(iw, { icon = "clock", label = _("Waiting to send"),
+                    sub = T(_("%1 waiting for the internet or for the book to be matched"), waiting),
+                    h = 64, chevron = true, action = { kind = "grimmory-ops-flush" } })
+            end
+        end
+        table.insert(items, space(nil, px(16)))
+        table.insert(items, MenuUI.section(w, _("Grimmory account"), MenuUI.group(w, a_rows)))
+    end)
     return items
 end
 
@@ -1479,6 +1574,169 @@ ACTIONS["goodreads-queue"] = function(page, action, browser, settings)
             page:refresh()
         end,
     }
+end
+
+-- Aleph for Grimmory modification, 2026-11-27 (aleph_grimmory.lua).
+ACTIONS["grimmory-url"] = function(page, action, browser, settings)
+    local G = require("aleph_grimmory")
+    require("aleph_input").prompt{
+        title = _("Grimmory server"),
+        text = G.url() or "",
+        hint = "http://192.168.1.10:6060",
+        ok_label = _("Save"),
+        on_ok = function(value)
+            local url = G.normalizeUrl(value)
+            browser:persistSetting("grimmory_url", url)
+            page:refresh()
+        end,
+    }
+end
+
+ACTIONS["grimmory-account"] = function(page, action, browser, settings)
+    local G = require("aleph_grimmory")
+    local Input = require("aleph_input")
+    Input.prompt{
+        title = _("KOReader user in Grimmory"),
+        text = G.user() or "",
+        hint = _("User name"),
+        ok_label = _("Next"),
+        on_ok = function(user)
+            user = tostring(user or ""):gsub("^%s+", ""):gsub("%s+$", "")
+            if user == "" then return end
+            UIManager:scheduleIn(0.2, function()
+                Input.prompt{
+                    title = _("Password"),
+                    hint = _("The password of this KOReader user"),
+                    text_type = "password",
+                    ok_label = _("Save"),
+                    on_ok = function(password)
+                        if not password or password == "" then return end
+                        G.setAccount(user, password)
+                        page:refresh()
+                        G.test(function(ok, message)
+                            try(function() require("aleph_toast").show(message, { icon = ok and "check" or "triangle-alert", timeout = ok and 2.5 or 6 }) end)
+                        end)
+                    end,
+                }
+            end)
+        end,
+    }
+end
+
+ACTIONS["grimmory-on"] = function(page, action, browser, settings)
+    browser:persistSetting("grimmory_on", settings.grimmory_on == false)
+    page:refresh()
+end
+
+ACTIONS["grimmory-ask"] = function(page, action, browser, settings)
+    browser:persistSetting("grimmory_ask", settings.grimmory_ask == false)
+    page:refresh()
+end
+
+ACTIONS["grimmory-test"] = function(page, action, browser, settings)
+    require("aleph_grimmory").test(function(ok, message)
+        try(function() require("aleph_toast").show(message, { icon = ok and "check" or "triangle-alert", timeout = ok and 2.5 or 6 }) end)
+    end)
+end
+
+ACTIONS["grimmory-flush"] = function(page, action, browser, settings)
+    require("aleph_grimmory").flush(function(r, why)
+        page:refresh()
+        local message = why == "offline" and _("No network. Turn on Wi-Fi and try again.")
+            or why == "failed" and _("Grimmory did not answer.") or nil
+        if message then
+            try(function() require("aleph_toast").show(message, { icon = "triangle-alert", timeout = 4 }) end)
+        end
+    end)
+end
+
+ACTIONS["grimmory-login"] = function(page, action, browser, settings)
+    local Sync = require("aleph_grimmory_sync")
+    local Input = require("aleph_input")
+    Input.prompt{
+        title = _("Grimmory account"),
+        text = Sync.user() or require("aleph_grimmory").user() or "",
+        hint = _("User name"),
+        ok_label = _("Next"),
+        on_ok = function(user)
+            user = tostring(user or ""):gsub("^%s+", ""):gsub("%s+$", "")
+            if user == "" then return end
+            UIManager:scheduleIn(0.2, function()
+                Input.prompt{
+                    title = _("Password"),
+                    hint = _("Used once to sign in, never kept"),
+                    text_type = "password",
+                    ok_label = _("Sign in"),
+                    on_ok = function(password)
+                        if not password or password == "" then return end
+                        Sync.login(user, password, function(ok, message)
+                            Sync._toast(message, ok)
+                            page:refresh()
+                            if ok then
+                                Sync.syncLibrary(function(r, err)
+                                    if r then Sync._toast(T(_("%1 of %2 books matched with Grimmory"), r.matched, r.total), true)
+                                    elseif err then Sync._toast(err, false) end
+                                    page:refresh()
+                                end)
+                            end
+                        end)
+                    end,
+                }
+            end)
+        end,
+    }
+end
+
+ACTIONS["grimmory-logout"] = function(page, action, browser, settings)
+    local Sync = require("aleph_grimmory_sync")
+    confirm(_("Sign out of Grimmory?"), _("Statuses, stars, highlights and sessions are no longer sent. Progress sync is not affected."), _("Sign out"), function()
+        Sync.logout()
+        page:refresh()
+    end)
+end
+
+ACTIONS["grimmory-browse"] = function(page, action, browser, settings)
+    require("aleph_grimmory_browse").open(browser)
+end
+
+ACTIONS["grimmory-sync"] = function(page, action, browser, settings)
+    local Sync = require("aleph_grimmory_sync")
+    Sync.syncLibrary(function(r, err)
+        if r then
+            Sync._toast(T(_("%1 of %2 books matched with Grimmory"), r.matched, r.total), true)
+        elseif err then Sync._toast(err, false) end
+        page:refresh()
+    end)
+end
+
+ACTIONS["grimmory-folder"] = function(page, action, browser, settings)
+    UIManager:show(require("ui/widget/pathchooser"):new{
+        select_directory = true, select_file = false,
+        path = require("aleph_grimmory_browse").folder(browser),
+        onConfirm = function(path)
+            browser:persistSetting("grimmory_folder", path)
+            page:refresh()
+        end,
+    })
+end
+
+ACTIONS["grimmory-toggle"] = function(page, action, browser, settings)
+    browser:persistSetting(action.key, settings[action.key] == false)
+    if action.key == "grimmory_shelves" and settings[action.key] then
+        require("aleph_grimmory_sync").syncLibrary(function() page:refresh() end)
+    end
+    page:refresh()
+end
+
+ACTIONS["grimmory-ops-flush"] = function(page, action, browser, settings)
+    local Sync = require("aleph_grimmory_sync")
+    Sync.flush(function(r, why)
+        page:refresh()
+        local message = why == "offline" and _("No network. Turn on Wi-Fi and try again.")
+            or why == "failed" and _("Grimmory did not answer.")
+            or why == "unmatched" and _("These books are not matched with Grimmory yet. Try Sync with Grimmory now.") or nil
+        if message then Sync._toast(message, false) end
+    end)
 end
 
 ACTIONS["goodreads-plugin-off"] = function(page, action, browser, settings)

@@ -1,5 +1,34 @@
 # Aleph (formerly Reading Board) — modifications, 2026-11-07 to 2026-11-15
 
+## 2026-11-27 — 1.3.0-grimmory.3 (Aleph for Grimmory fork)
+
+- **Highlights as Grimmory's own** (new aleph_grimmory_highlights.lua; aleph_grimmory_cfi.lua, aleph_grimmory_annotations.lua and aleph_slaxml.lua taken from ManorianOTP's Grimmory-KOReader-Client, MIT, see THIRD_PARTY_NOTICES.md): an EPUB's highlights synced both ways with Grimmory's annotations (/api/v1/annotations) through EPUB CFI, when it opens (main.lua Board:onReaderReady), a few seconds after a highlight changes (new Board:onAnnotationsModified), when Wi-Fi comes back and when it closes. Three-way merge against the last agreed state (kept per book in aleph_grimmory_state.lua, ann); conflicts are left as they are on each side. Setting "Sync the highlights" (grimmory_highlights); the "KOReader highlights" note is kept for other books.
+- **One account**: signing in to the Grimmory account fetches its KOReader user (/api/v1/koreader-users/me), or creates one with a password nobody types, turns its sync on and sets up progress sync with it, unless progress sync was already set by hand (S.workLogin).
+- **Other Grimmory plugins** (new aleph_grimmory_others.lua): with Grimmory's plugin or Grimmory Sync installed and on, Aleph does not send what they send (progress; highlights and sessions when on in them), and its settings say so.
+- **Tests**: tests/grimmory_highlights_test.lua (73 checks: CFI round trips on small EPUB trees from Grimmory-KOReader-Client's tests, the merge against a pretend server, the single account, the other plugins, the reader hooks). 208 checks in all.
+
+## 2026-11-27 — 1.3.0-grimmory.2 (Aleph for Grimmory fork)
+
+- **Fixes** (after review): signing out of the Grimmory account forgets what was sent (aleph_grimmory_sync.lua S.logout); when every highlight of a book is removed, its "KOReader highlights" note is deleted in Grimmory (Api:deleteNote); Test the connection, signing in, Sync with Grimmory now and Browse Grimmory turn Wi-Fi on first when it is off (G.withNetwork, KOReader's NetworkMgr:runWhenOnline). Tests: 135 checks.
+
+- **Grimmory account** (new aleph_grimmory_api.lua, aleph_grimmory_http.lua, aleph_grimmory_sync.lua): sign in with the reader's Grimmory account (Grimmory's /api/v1; the password is used once, the tokens are kept and renewed) in Settings > Library > Grimmory account.
+- **Browse Grimmory** (new aleph_grimmory_browse.lua; gesture "Aleph: Grimmory library", main.lua Board:onShowAlephGrimmory): recently added, search and shelves in KOReader's menu; a book downloaded with a tap into the download folder.
+- **Books matched** with Grimmory's (by file name and size, ISBN, or title and first author), after signing in and once a day when Home opens (Board:onShowAleph).
+- **Sent to Grimmory** for matched books (Board:onCloseDocument, Board:onDocSettingsItemsChanged): status, stars (out of 10), highlights as one note "KOReader highlights", reading sessions; queued offline.
+- **Shelves as collections** through aleph_calibre_collections.lua's CC.apply.
+- **HTTP** in one place (aleph_grimmory_http.lua); aleph_grimmory.lua uses it.
+- **Tests**: tests/grimmory_api_test.lua (63 checks) and tests/grimmory_server_test.lua (29 checks, against a pretend Grimmory with its routes).
+
+## 2026-11-27 — 1.3.0-grimmory.1 (Aleph for Grimmory fork)
+
+Modified by lolly76 from Aleph 1.3.0 (lara-2-ko/aleph.koplugin). This is a modified version of BookOrbit and is not an official BookOrbit release, nor an official Aleph release.
+
+- **Grimmory progress sync** (new aleph_grimmory.lua): the server address and a Grimmory KOReader user (name, MD5 of the password) in Settings > Library > Grimmory, with Test the connection. Where a book closes is sent to Grimmory's `/api/koreader/syncs/progress` (main.lua Board:onCloseDocument), queued when offline and sent again when Wi-Fi is back (Board:onNetworkConnected); where Grimmory has it is asked for when it opens (Board:onReaderReady), with an offer to go there when it is further on from another device. Books are matched by KOReader's partial MD5. Requests run in a background process (aleph_job.lua).
+- **"60% on Grimmory"** in the library and on a book's page (aleph_remote_progress.lua Remote.other), from what Grimmory last said for the book.
+- **Password prompts** (aleph_input.lua): `text_type` passed to KOReader's InputDialog.
+- **Translations**: French for the new texts; the other catalogues list them untranslated (English shown).
+- **Tests**: tests/grimmory_test.lua (35 checks: addresses, answers, the queue, settings, the jump offer).
+
 ## 2026-11-20 — 1.3.0 (release)
 
 Everything from 1.2.8 to 1.2.59 (see below), released as 1.3.0:
