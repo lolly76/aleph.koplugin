@@ -1576,7 +1576,9 @@ function Browser:showAbout()
     local dialog
     dialog = require("ui/widget/buttondialog"):new{ title = "Aleph " .. require("aleph_prefs").VERSION, text =
         "Powered by BookOrbit\nCopyright (C) 2025-2026 neon.\nAdditional copyright is held by the respective BookOrbit contributors.\nOriginal project: https://github.com/bookorbit/bookorbit\n\n" ..
-        "This is a modified version of BookOrbit and is not an official BookOrbit release. Modified 2026-11-20.\n\n" ..
+        "This is a modified version of BookOrbit and is not an official BookOrbit release. Modified 2026-11-28.\n\n" ..
+        -- Aleph for Grimmory modification, 2026-11-28: this fork named, with its source.
+        "Aleph for Grimmory: modified by lolly76 from Aleph 1.3.0 (lara-2-ko), 2026-11-28; not an official Aleph release. Source: https://github.com/lolly76/aleph.koplugin\n\n" ..
         "Licensed under the GNU Affero General Public License, version 3 only, with additional terms. This software is provided without warranty. You may redistribute and modify it under those terms.\n\n" ..
         "Complete source is included in aleph.koplugin. See LICENSE, ADDITIONAL_TERMS.md and MODIFICATIONS.md. Books and statistics come from KOReader; Syncthing operates independently.",
         buttons = { { { text = _("Powered by BookOrbit ↗"), callback = function()

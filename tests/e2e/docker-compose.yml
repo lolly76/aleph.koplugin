@@ -1,0 +1,32 @@
+# Aleph for Grimmory modification, 2026-11-28: a throwaway Grimmory for
+# tests/e2e/run.sh (nothing is kept: no volumes outside this folder's work/).
+services:
+  grimmory:
+    image: grimmory/grimmory:${GRIMMORY_TAG:-latest}
+    environment:
+      - USER_ID=0
+      - GROUP_ID=0
+      - TZ=Etc/UTC
+      - DATABASE_URL=jdbc:mariadb://mariadb:3306/grimmory
+      - DATABASE_USERNAME=grimmory
+      - DATABASE_PASSWORD=aleph-test
+      - SWAGGER_ENABLED=false
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    ports:
+      - "${GRIMMORY_PORT:-6061}:6060"
+    volumes:
+      - ./work/books:/books
+  mariadb:
+    image: mariadb:11.4
+    environment:
+      - MARIADB_ROOT_PASSWORD=aleph-test-root
+      - MARIADB_DATABASE=grimmory
+      - MARIADB_USER=grimmory
+      - MARIADB_PASSWORD=aleph-test
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30

@@ -79,7 +79,7 @@ end
 
 local function saveTokens(t)
     local keep = { user = t.user, access = t.access, access_exp = t.access_exp,
-        refresh = t.refresh, refresh_exp = t.refresh_exp }
+        refresh = t.refresh, refresh_exp = t.refresh_exp, refresh_at = t.refresh_at }
     Prefs.set("grimmory_api", keep.refresh and keep or (keep.user and { user = keep.user } or nil))
 end
 S._saveTokens = saveTokens
@@ -132,7 +132,13 @@ function S.changes(book, sent, opts)
         -- Reading and Read come from the percentage (aleph_grimmory.lua);
         -- sent here only when KOReader's status says something else, or Read
         -- by hand before the end.
-        if status and status ~= sent.status and status ~= "UNREAD" and not (status == "READING" and not sent.status) then
+        -- Aleph for Grimmory modification, 2026-11-28: a position sent at the
+        -- same time (opts.pct) makes Grimmory set Reading or Read from its
+        -- percentage, so Finished before the end, or On hold, is sent again
+        -- after it, even when it was sent before.
+        local from_pct = opts.pct and require("aleph_grimmory").statusFromPercent(opts.pct)
+        local overridden = from_pct and (status == "READ" or status == "PAUSED") and status ~= from_pct
+        if status and (overridden or (status ~= sent.status and status ~= "UNREAD" and not (status == "READING" and not sent.status))) then
             ops[#ops + 1] = { op = "status", path = book.path, status = status, time = now }
         end
     end
@@ -295,42 +301,92 @@ local function resultPath(kind)
     return require("datastorage"):getSettingsDir() .. "/aleph_grimmory_" .. kind .. ".lua"
 end
 
+local function unique()
+    return tostring(os.time()) .. tostring(math.random(100000, 999999))
+end
+
+-- Aleph for Grimmory modification, 2026-11-28: one run at a time. Grimmory
+-- takes a refresh token back when it gives a new one, so two runs renewing
+-- with the same token at once signed the device out (the second one was
+-- refused). Runs asked for while one is out wait their turn, and each starts
+-- with the tokens the one before it left.
+local active = false
+local waiting = {}
+
+local function saveTokensNow(t)
+    saveTokens(t)
+    -- Written out at once: a crash before KOReader saves its settings would
+    -- keep a refresh token Grimmory has already taken back.
+    pcall(function() G_reader_settings:flush() end)
+end
+
+local start
+
+local function nextRun()
+    active = false
+    local w = table.remove(waiting, 1)
+    if w then start(w.kind, w.fn, w.plan, w.done) end
+end
+
 -- Runs fn(plan) in the background; done(result) in KOReader's loop. Tokens a
 -- run renewed are kept whatever happens to it.
-local function run(kind, fn, plan, done)
+start = function(kind, fn, plan, done)
     local Job = require("aleph_job")
     local File = require("aleph_file")
     plan.base = plan.base or require("aleph_grimmory").url()
-    plan.tokens = plan.tokens or S.tokens()
-    plan.tokens_out = tokensPath()
+    if not plan.base then
+        running[kind] = nil
+        if done then pcall(done, nil) end
+        return nextRun()
+    end
+    active = true
+    -- (Read now, not when asked: the run before may have renewed them.)
+    if plan.tokens == nil then plan.tokens = S.tokens() end
+    plan.tokens_out = tokensPath() .. "." .. unique()
     os.remove(plan.tokens_out)
+    local finished = false
     local function finish(r)
+        if finished then return end
+        finished = true
         local t = File.read(plan.tokens_out)
         os.remove(plan.tokens_out)
-        if type(t) == "table" then saveTokens(t) end
+        if type(t) == "table" then saveTokensNow(t) end
         running[kind] = nil
-        if done then done(type(r) == "table" and not r.error and r or nil) end
+        if done then
+            local ok, err = pcall(done, type(r) == "table" and not r.error and r or nil)
+            if not ok then require("aleph_try").report("Grimmory " .. kind, err) end
+        end
+        nextRun()
     end
-    if not plan.base then if done then done(nil) end return false end
-    running[kind] = true
     if not Job.available() then
         local ok, r = pcall(fn, plan)
         finish(ok and r or nil)
-        return ok
+        return
     end
-    local out = resultPath(kind) .. "." .. tostring(os.time())
+    local out = resultPath(kind) .. "." .. unique()
     local pid = Job.start(function()
         local ok, r = pcall(fn, plan)
         File.write(out, ok and r or { error = tostring(r) })
     end, { name = "grimmory " .. kind })
-    if not pid then running[kind] = nil; if done then done(nil) end return false end
-    Job.watch(pid, { every = 0.5, timeout = S.TIMEOUT, on_done = function()
+    if not pid then return finish(nil) end
+    Job.watch(pid, { every = 0.5, timeout = plan.timeout or S.TIMEOUT, on_done = function()
         local r = File.read(out)
         os.remove(out)
         finish(r)
     end })
+end
+
+local function run(kind, fn, plan, done)
+    running[kind] = true
+    if active then
+        waiting[#waiting + 1] = { kind = kind, fn = fn, plan = plan, done = done }
+    else
+        start(kind, fn, plan, done)
+    end
     return true
 end
+S._busy = function() return active, #waiting end
+S._resetRuns = function() active, waiting, running = false, {}, {} end
 S._run = run
 
 local function online()
@@ -371,13 +427,50 @@ end
 
 -- Signing out forgets what was sent (another account may sign in next);
 -- which local book is which Grimmory book is kept until the next match.
-function S.logout()
+-- Aleph for Grimmory modification, 2026-11-28: the tokens taken back on
+-- the server as well, when it can be reached (in the background; the
+-- device forgets them at once either way). Renewed tokens are not kept.
+function S.workLogout(plan)
+    local Api = require("aleph_grimmory_api")
+    local api = Api.new(plan.base, plan.old_tokens)
+    return { code = api:logout() }
+end
+
+-- base: the server the tokens are from (the one set now unless given).
+function S.logout(base)
+    local old = S.tokens()
+    base = base or require("aleph_grimmory").url()
+    if base and type(old.refresh) == "string" and online() then
+        local copy = {}
+        for k, v in pairs(old) do copy[k] = v end
+        try(function() S._run("logout", S.workLogout, { base = base, old_tokens = copy, tokens = {} }) end)
+    end
     Prefs.set("grimmory_api", nil)
     Prefs.set("grimmory_ops", nil)
     local st = S.state()
     st.sent = {}
     st.ann = nil
+    -- Highlights keep the Grimmory ids of this account until each book is
+    -- opened again; they are dropped then (aleph_grimmory_highlights.lua),
+    -- and the next account finds them again by their place.
+    st.forget_ann_ids = os.time()
     S.saveState()
+    pcall(function() G_reader_settings:flush() end)
+end
+
+-- Aleph for Grimmory modification, 2026-11-28: another server. Its tokens,
+-- book ids, what was sent and the highlights' state belonged to the old
+-- one: all forgotten (the books are matched again after signing in), and the
+-- progress queue and positions too. Highlights keep their text and place;
+-- their old Grimmory ids are dropped as each book opens (H.forgetIds).
+function S.serverChanged(old_base)
+    S.logout(old_base)
+    local st = S.state()
+    st.ids = {}
+    st.last_sync = nil
+    S.saveState()
+    Prefs.set("grimmory_queue", nil)
+    Prefs.set("grimmory_remote", nil)
 end
 
 -- The library's books, as matching wants them.
@@ -431,7 +524,7 @@ function S.syncLibrary(done)
         return
     end
     local shelves_on = Prefs.on("grimmory_shelves")
-    S._run("library", S.workLibrary, { shelves = shelves_on }, function(r)
+    S._run("library", S.workLibrary, { shelves = shelves_on, timeout = 300 }, function(r)
         if not r or r.code ~= 200 then
             if done then done(nil, (r and (r.code == 401 or r.code == 403)) and _("Grimmory signed this device out. Sign in again.") or _("Grimmory did not answer.")) end
             return
@@ -527,11 +620,17 @@ end
 
 -- A book's status, stars and highlights from its settings.
 local function bookFrom(path, ds)
-    local summary = ds and ds:readSetting("summary") or {}
+    -- (A DocSettings, or a plain table of settings.)
+    local function read(key)
+        if type(ds) ~= "table" then return nil end
+        if type(ds.readSetting) == "function" then return ds:readSetting(key) end
+        return ds[key]
+    end
+    local summary = read("summary") or {}
     local stars
     try(function() stars = require("aleph_local").ratingOf(summary) end)
     local highlights = {}
-    for _i, a in ipairs(ds and ds:readSetting("annotations") or {}) do
+    for _i, a in ipairs(read("annotations") or {}) do
         if a.pos0 and a.text and a.text ~= "" then
             highlights[#highlights + 1] = { text = a.text, note = a.note, chapter = a.chapter, datetime = a.datetime }
         end
@@ -558,22 +657,47 @@ function S.open(ui)
     session = { path = ui.document.file, started = os.time(), from = pct, from_pos = pos }
 end
 
+-- The session so far, as an op (nil when there is none to send).
+local function sessionOp(ui, path)
+    if not (session and session.path == path and Prefs.on("grimmory_sessions")
+            and not require("aleph_grimmory_others").owns("sessions")) then return nil end
+    local pct, pos = position(ui)
+    return { op = "session", path = path, time = os.time(), body_parts = {
+        started = session.started, ended = os.time(), from = session.from, to = pct,
+        from_pos = session.from_pos, to_pos = pos, format = path:match("%.([^%.]+)$") } }
+end
+
+-- Aleph for Grimmory modification, 2026-11-28: time asleep is not reading.
+-- The device going to sleep ends the session; waking up starts another.
+function S.suspend(ui)
+    if not S.signedIn() or not ui or not ui.document or not session then return end
+    local op = sessionOp(ui, ui.document.file)
+    session = nil
+    if not op then return end
+    local ops = { op }
+    S.finishSessions(ops)
+    enqueueAll(ops)
+end
+
+function S.resume(ui)
+    if not S.signedIn() or not ui or not ui.document or session then return end
+    S.open(ui)
+end
+
 function S.close(ui)
     if not S.signedIn() or not ui or not ui.document then return end
     local path = ui.document.file
     local ops = {}
-    if session and session.path == path and Prefs.on("grimmory_sessions")
-            and not require("aleph_grimmory_others").owns("sessions") then
-        local pct, pos = position(ui)
-        ops[#ops + 1] = { op = "session", path = path, time = os.time(), body_parts = {
-            started = session.started, ended = os.time(), from = session.from, to = pct,
-            from_pos = session.from_pos, to_pos = pos, format = path:match("%.([^%.]+)$") } }
-    end
+    local sop = sessionOp(ui, path)
+    if sop then ops[#ops + 1] = sop end
     session = nil
     local id = S.idOf(path)
     local book = bookFrom(path, ui.doc_settings)
     local sent = id and S.state().sent[id] or nil
-    for _i, op in ipairs(S.changes(book, sent, optsNow(path))) do ops[#ops + 1] = op end
+    local opts = optsNow(path)
+    -- (Progress sync sends the position as the book closes: aleph_grimmory.lua.)
+    if require("aleph_grimmory").enabled() then opts.pct = select(1, position(ui)) end
+    for _i, op in ipairs(S.changes(book, sent, opts)) do ops[#ops + 1] = op end
     -- The session's body is made now its book id may be known (or when sent).
     S.finishSessions(ops)
     enqueueAll(ops)
@@ -616,6 +740,12 @@ end
 -- Before a run, sessions queued before their book was matched get their body.
 local base_flush = S.flush
 function S.flush(done)
+    -- Aleph for Grimmory modification, 2026-11-28: after the positions being
+    -- sent (a status goes after the position that would reset it).
+    local G = require("aleph_grimmory")
+    if G.isRunning and G.isRunning() then
+        return G.after(function() S.flush(done) end)
+    end
     local q = S.ops()
     if #q > 0 then
         S.finishSessions(q)

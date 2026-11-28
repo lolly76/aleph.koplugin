@@ -159,6 +159,7 @@ eq(lib.code, 200, "library"); eq(lib.books[1].primaryFile.fileName, "dune.epub",
 -- Signed out on the server: the refresh token is refused and forgotten
 server.access, server.refresh = "Z", "Z"
 api.tokens.access_exp = 0
+api.tokens.refresh_at = 0   -- (an old refresh token: a young one refused is kept, tests/grimmory_fixes_test.lua)
 eq(api:setStatus(7, "READ"), 401, "signed out"); eq(api.tokens.refresh, nil, "refresh forgotten")
 os.remove(plan.tokens_out)
 

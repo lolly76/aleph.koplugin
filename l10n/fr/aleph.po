@@ -7290,3 +7290,7 @@ msgstr "Connecté à Grimmory. La synchro de la progression est aussi configuré
 
 msgid "Made in Grimmory, or set up by signing in to your Grimmory account below"
 msgstr "Créé dans Grimmory, ou configuré en se connectant à votre compte Grimmory plus bas"
+
+#: aleph_settings_page.lua
+msgid "This address is not encrypted (http) and not on your home network: passwords and tokens can be read on the way. Use https if you can."
+msgstr "Cette adresse n'est pas chiffrée (http) et n'est pas sur votre réseau local : mots de passe et jetons peuvent être lus en chemin. Utilisez https si possible."

@@ -2,7 +2,10 @@
 -- Taken from Grimmory-KOReader-Client (grimmory_sync.koplugin/cfi.lua),
 -- https://github.com/ManorianOTP/Grimmory-KOReader-Client
 -- Copyright (c) 2026 ManorianOTP, MIT License (see THIRD_PARTY_NOTICES.md).
--- Changes for Aleph: module names (aleph_slaxml), log prefix.
+-- Changes for Aleph: module names (aleph_slaxml), log prefix; 2026-11-28: each
+-- chapter parsed once and each conversion worked out once while a book is
+-- open (the DOM cache and the memo below), so a book with many highlights
+-- does not hold up the reader.
 local logger = require("logger")
 local SLAXML = require("aleph_slaxml")
 
@@ -24,6 +27,42 @@ local SYNTHETIC = {
 local _reader   = nil   -- ffi.archiver Reader handle
 local _spine    = nil   -- array of {idref, href}
 local _opf_dir  = ""    -- directory prefix for OPF-relative hrefs
+local _doms     = {}    -- archive path -> parsed DOM, the last DOM_KEEP chapters
+local _dom_order = {}   -- archive paths, oldest first
+local _memo     = {}    -- "x" .. xpointer -> CFI, "c" .. CFI -> xpointer
+
+cfi.DOM_KEEP = 4
+cfi.parses = 0          -- chapters parsed since the book was opened (for tests)
+
+-- A chapter's DOM, parsed once while it is among the last DOM_KEEP used.
+-- The DOM is only read by the walks below, never changed.
+local function chapterDom(archive_path)
+    local doc = _doms[archive_path]
+    if doc then return doc end
+    local xhtml = _reader:extractToMemory(archive_path)
+    if not xhtml or #xhtml == 0 then
+        return nil, "XHTML not found in archive: " .. archive_path
+    end
+    -- SLAXML v0.8 rejects DOCTYPE as non-whitespace root text; strip before parse.
+    xhtml = xhtml:gsub("<!DOCTYPE[^>]*>", "", 1)
+    local ok, parsed = pcall(function()
+        -- Preserve leading/trailing spaces inside meaningful inline text. The
+        -- old stripWhitespace mode trimmed "Hello " to "Hello", shifting all
+        -- flattened offsets after an inline boundary. Indexing helpers still
+        -- ignore indentation-only nodes, preserving stable structural steps.
+        return SLAXML:dom(xhtml, {stripWhitespace=false})
+    end)
+    if not ok or not parsed then
+        return nil, "XHTML DOM parse failed: " .. tostring(parsed)
+    end
+    cfi.parses = cfi.parses + 1
+    _doms[archive_path] = parsed
+    _dom_order[#_dom_order + 1] = archive_path
+    while #_dom_order > cfi.DOM_KEEP do
+        _doms[table.remove(_dom_order, 1)] = nil
+    end
+    return parsed
+end
 
 -- ── EPUB parsing ──────────────────────────────────────────────────────────────
 
@@ -164,6 +203,8 @@ function cfi.clearCache()
     end
     _spine   = nil
     _opf_dir = ""
+    _doms, _dom_order, _memo = {}, {}, {}
+    cfi.parses = 0
 end
 
 -- ── Internal: XPointer parsing ────────────────────────────────────────────────
@@ -494,23 +535,8 @@ end
 
 local function computeCFIPath(spine_href, path_steps, char_offset, text_node_index)
     local archive_path = resolveHref(spine_href)
-    local xhtml = _reader:extractToMemory(archive_path)
-    if not xhtml or #xhtml == 0 then
-        return nil, "XHTML not found in archive: " .. archive_path
-    end
-    -- SLAXML v0.8 rejects DOCTYPE as non-whitespace root text; strip before parse.
-    xhtml = xhtml:gsub("<!DOCTYPE[^>]*>", "", 1)
-
-    local ok, doc = pcall(function()
-        -- Preserve leading/trailing spaces inside meaningful inline text. The
-        -- old stripWhitespace mode trimmed "Hello " to "Hello", shifting all
-        -- flattened offsets after an inline boundary. Indexing helpers still
-        -- ignore indentation-only nodes, preserving stable structural steps.
-        return SLAXML:dom(xhtml, {stripWhitespace=false})
-    end)
-    if not ok or not doc then
-        return nil, "XHTML DOM parse failed: " .. tostring(doc)
-    end
+    local doc, dom_err = chapterDom(archive_path)
+    if not doc then return nil, dom_err end
 
     -- Find <html> root and <body>, computing body's CFI index within <html>
     local html_node = nil
@@ -723,18 +749,8 @@ function cfi.cfiToXPointer(cfi_string)
 
     -- Load XHTML and walk DOM to convert absolute indices to per-name indices
     local archive_path = resolveHref(spine_entry.href)
-    local xhtml = _reader:extractToMemory(archive_path)
-    if not xhtml or #xhtml == 0 then
-        return nil, "XHTML not found: " .. archive_path
-    end
-    xhtml = xhtml:gsub("<!DOCTYPE[^>]*>", "", 1)
-
-    local ok, doc = pcall(function()
-        return SLAXML:dom(xhtml, {stripWhitespace=false})
-    end)
-    if not ok or not doc then
-        return nil, "XHTML DOM parse failed: " .. tostring(doc)
-    end
+    local doc, dom_err = chapterDom(archive_path)
+    if not doc then return nil, dom_err end
 
     -- Find <html>, then locate <body> within it and consume the first abs index
     -- (which is body's CFI index within <html>, not a step inside body).
@@ -909,6 +925,26 @@ function cfi.cfiRangeToXPointers(range)
     local pos1, last_err = cfi.cfiToXPointer(last)
     if not pos1 then return nil, nil, last_err end
     return pos0, pos1, nil
+end
+
+-- Each conversion worked out once while the book is open (the same
+-- highlight is converted when it is sent, merged and checked).
+local raw_toCFI, raw_toXP = cfi.xpointerToCFI, cfi.cfiToXPointer
+function cfi.xpointerToCFI(xp)
+    if type(xp) ~= "string" then return raw_toCFI(xp) end
+    local hit = _memo["x" .. xp]
+    if hit then return hit, nil end
+    local out, err = raw_toCFI(xp)
+    if out and _spine then _memo["x" .. xp] = out end
+    return out, err
+end
+function cfi.cfiToXPointer(c)
+    if type(c) ~= "string" then return raw_toXP(c) end
+    local hit = _memo["c" .. c]
+    if hit then return hit, nil end
+    local out, err = raw_toXP(c)
+    if out and _spine then _memo["c" .. c] = out end
+    return out, err
 end
 
 return cfi

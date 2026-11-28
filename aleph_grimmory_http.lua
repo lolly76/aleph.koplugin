@@ -10,6 +10,7 @@
         json = { ... },               -- sent as the JSON body, if given
         file = "/path/to/save",       -- the answer written there instead (a download)
         accept = "application/json",
+        block = 10, total = 20,       -- timeouts (s), see below; total -1: none
     }
 
 code: the HTTP status, or nil when the server could not be reached.
@@ -18,7 +19,9 @@ answer's text (nil for a download). A download goes to file .. ".part"
 first and is moved in place only when whole (status 200).
 
 Meant for a background process: it waits for the server (10 s for each
-step, 20 s in all; 120 s in all for a download).
+step, 20 s in all unless block / total say otherwise; a download waits
+30 s for each step and has no limit in all, so a big book on slow Wi-Fi
+still arrives while data keeps coming).
 ]]
 
 local Http = {}
@@ -46,7 +49,11 @@ function Http.request(o)
     else
         sink = ltn12.sink.table(out)
     end
-    if o.file then socketutil:set_timeout(30, 120) else socketutil:set_timeout(10, 20) end
+    if o.file then
+        socketutil:set_timeout(o.block or 30, o.total or -1)
+    else
+        socketutil:set_timeout(o.block or 10, o.total or 20)
+    end
     local ok, code = pcall(function()
         local _r, status = http.request{
             url = url, method = o.method or "GET", headers = headers,

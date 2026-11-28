@@ -449,6 +449,11 @@ function Board:onSuspend()
         try(function() require("aleph_bookends").disarm(self.ui) end)
     end
     try(function() require("aleph_mem").report("going to sleep") end)
+    -- Aleph for Grimmory modification, 2026-11-28: the reading session ends
+    -- as the device goes to sleep (aleph_grimmory_sync.lua).
+    if self.ui and self.ui.document then
+        try(function() require("aleph_grimmory_sync").suspend(self.ui) end)
+    end
     -- Nobody waits as the device goes to sleep: the library index, when it
     -- has changes not written yet, is written now (in the background).
     saveIndexLater()
@@ -457,6 +462,8 @@ function Board:onResume()
     try(function() require("aleph_mem").report("woke up") end)
     if self.ui and self.ui.document then
         try(function() require("aleph_bookends").arm(self.ui) end)
+        -- Aleph for Grimmory modification, 2026-11-28: and another starts.
+        try(function() require("aleph_grimmory_sync").resume(self.ui) end)
     end
     -- Night mode by the clock (Settings > Home > Night profile): a period
     -- that started while the device slept is set now.

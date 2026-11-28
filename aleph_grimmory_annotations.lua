@@ -2,7 +2,7 @@
 -- Taken from Grimmory-KOReader-Client (grimmory_sync.koplugin/annotations.lua),
 -- https://github.com/ManorianOTP/Grimmory-KOReader-Client
 -- Copyright (c) 2026 ManorianOTP, MIT License (see THIRD_PARTY_NOTICES.md).
--- Changes for Aleph: none to the logic.
+-- Changes for Aleph: none to the logic; 2026-11-28: dates in KOReader's form (localDate).
 -- Pure EPUB annotation conversion and three-way reconciliation helpers.
 -- Network IO and document persistence remain in main.lua.
 
@@ -292,11 +292,28 @@ function AnnotationSync.plan(local_items, remote, shadow)
     return plan
 end
 
+-- Aleph for Grimmory modification, 2026-11-28: Grimmory's dates
+-- ("2026-11-27T09:00:00.123456", or with Z) in KOReader's own form,
+-- "2026-11-27 09:00:00"; one in UTC (Z) is turned to the device's time.
 local function localDate(iso)
     if type(iso) ~= "string" then return nil end
-    local value = iso:gsub("T", " "):gsub("%.%d+Z$", "Z")
-    return value
+    local y, mo, d, h, mi, sec, rest = iso:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)[T ](%d%d):(%d%d):(%d%d)(.*)$")
+    if not y then return nil end
+    if rest:match("Z$") or rest:match("%+00:?00$") then
+        local t = { year = tonumber(y), month = tonumber(mo), day = tonumber(d),
+            hour = tonumber(h), min = tonumber(mi), sec = tonumber(sec), isdst = false }
+        local as_local = os.time(t)
+        if as_local then
+            -- os.time read it as local time: add the device's offset from UTC.
+            local utc = os.date("!*t", as_local)
+            utc.isdst = false
+            local offset = as_local - os.time(utc)
+            return os.date("%Y-%m-%d %H:%M:%S", as_local + offset)
+        end
+    end
+    return string.format("%s-%s-%s %s:%s:%s", y, mo, d, h, mi, sec)
 end
+AnnotationSync.localDate = localDate
 
 function AnnotationSync.toLocal(remote, cfi)
     local ok, pos0, pos1, conversion_err = pcall(

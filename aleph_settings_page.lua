@@ -1586,8 +1586,17 @@ ACTIONS["grimmory-url"] = function(page, action, browser, settings)
         ok_label = _("Save"),
         on_ok = function(value)
             local url = G.normalizeUrl(value)
+            -- Aleph for Grimmory modification, 2026-11-28: another server
+            -- signs the account out and forgets what belonged to the old one.
+            local old = G.url()
             browser:persistSetting("grimmory_url", url)
+            if old and url ~= old then
+                try(function() require("aleph_grimmory_sync").serverChanged(old) end)
+            end
             page:refresh()
+            if url and G.insecure(url) then
+                try(function() require("aleph_toast").show(_("This address is not encrypted (http) and not on your home network: passwords and tokens can be read on the way. Use https if you can."), { icon = "triangle-alert", timeout = 8 }) end)
+            end
         end,
     }
 end

@@ -64,6 +64,21 @@ function H.mark(annotations)
     return table.concat(parts, "\2")
 end
 
+-- Aleph for Grimmory modification, 2026-11-28: the Grimmory ids of another
+-- account (or server) taken off the highlights; returns how many changed.
+local GRIMMORY_FIELDS = { "grimmory_id", "grimmory_cfi", "grimmory_color", "grimmory_local_color",
+    "grimmory_style", "grimmory_local_style" }
+function H.forgetIds(annotations)
+    local n = 0
+    for _i, a in ipairs(type(annotations) == "table" and annotations or {}) do
+        if type(a) == "table" and a.grimmory_id ~= nil then
+            for _j, k in ipairs(GRIMMORY_FIELDS) do a[k] = nil end
+            n = n + 1
+        end
+    end
+    return n
+end
+
 -- What a book is, for this sync: an EPUB with a Grimmory id.
 function H.eligible(path, id)
     return id ~= nil and type(path) == "string" and path:lower():match("%.epub3?$") ~= nil
@@ -225,6 +240,16 @@ function H.open(ui)
         require("logger").warn("Aleph Grimmory: CFI unavailable:", tostring(ok and err or res))
         book = nil
         return
+    end
+    -- Signed out since this book was last synced: its highlights' ids
+    -- were the other account's.
+    local forget = tonumber(Sync().state().forget_ann_ids)
+    local ds = ui.doc_settings
+    if forget and ds and (tonumber(ds:readSetting("aleph_grimmory_ids_at")) or 0) < forget then
+        if H.forgetIds(localAnnotations(ui)) > 0 then
+            ds:saveSetting("annotations", localAnnotations(ui))
+        end
+        ds:saveSetting("aleph_grimmory_ids_at", os.time())
     end
     book = { path = path, id = id, ui = ui }
     if online() then H.sync() end
