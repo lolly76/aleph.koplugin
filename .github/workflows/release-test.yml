@@ -1,0 +1,35 @@
+# Aleph for Grimmory modification, 2026-11-28: a test release, made by hand
+# (Actions > Test release > Run workflow): the plugin folder as one zip,
+# published as a GitHub pre-release with .github/release-notes-test.md.
+name: Test release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag of the pre-release"
+        default: "v1.3.0-grimmory.4-test"
+        required: true
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq luajit zip
+      - name: Tests first
+        run: for t in tests/*.lua; do luajit "$t"; done
+      - name: The zip (without tests, screenshots or GitHub files)
+        run: |
+          mkdir -p out
+          git archive --prefix=aleph.koplugin/ HEAD | tar -x -C out
+          rm -rf out/aleph.koplugin/tests out/aleph.koplugin/screenshots out/aleph.koplugin/.github out/aleph.koplugin/.gitignore
+          (cd out && zip -q -r -X aleph.koplugin.zip aleph.koplugin)
+      - name: Pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.tag }}" out/aleph.koplugin.zip \
+            --prerelease --target "${{ github.sha }}" \
+            --title "Aleph for Grimmory ${{ inputs.tag }} (test)" \
+            --notes-file .github/release-notes-test.md
