@@ -1058,6 +1058,10 @@ function Local:saveSummary(book, change)
     ds:flush()
     -- The file browser keeps a copy of each book's status.
     try(function() require("ui/widget/booklist").setBookInfoCacheProperty(book.path, "status", summary.status) end)
+    -- Aleph for Grimmory modification, 2026-11-28: status and stars set from
+    -- Home, the library or the book's page go to Grimmory too (KOReader has
+    -- no event for them; aleph_grimmory_sync.lua).
+    try(function() require("aleph_grimmory_sync").docChanged(book.path, ds) end)
     self:touch()
     return summary
 end

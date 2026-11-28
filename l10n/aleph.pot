@@ -7241,3 +7241,7 @@ msgstr ""
 
 msgid "Made in Grimmory, or set up by signing in to your Grimmory account below"
 msgstr ""
+
+#: aleph_settings_page.lua
+msgid "This address is not encrypted (http) and not on your home network: passwords and tokens can be read on the way. Use https if you can."
+msgstr ""

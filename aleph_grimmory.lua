@@ -55,6 +55,22 @@ function G.normalizeUrl(s)
     return s
 end
 
+-- Aleph for Grimmory modification, 2026-11-28: an http address outside the
+-- home network (the password, key and tokens would travel in clear).
+function G.insecure(url)
+    if type(url) ~= "string" or not url:match("^http://") then return false end
+    local host = url:match("^http://%[?([^/%]]+)") or ""
+    host = host:gsub(":%d+$", ""):lower()
+    if host == "localhost" or host:match("%.local$") or host:match("%.lan$") or host:match("%.home$")
+            or host:match("^127%.") or host:match("^10%.") or host:match("^192%.168%.")
+            or host:match("^169%.254%.") or not host:find("%.") then return false end
+    local b = tonumber(host:match("^172%.(%d+)%."))
+    if b and b >= 16 and b <= 31 then return false end
+    local c = tonumber(host:match("^100%.(%d+)%."))   -- Tailscale and other CGNAT
+    if c and c >= 64 and c <= 127 then return false end
+    return true
+end
+
 function G.api(base)
     return base .. "/api/koreader"
 end
@@ -165,7 +181,7 @@ local function remember(hash, remote)
     local all = Prefs.get().grimmory_remote
     all = type(all) == "table" and all or {}
     if remote then
-        all[hash] = { pct = remote.pct, device = remote.device, device_id = remote.device_id, time = remote.time, seen = os.time() }
+        all[hash] = { pct = remote.pct, progress = remote.progress, device = remote.device, device_id = remote.device_id, time = remote.time, seen = os.time() }
     else
         all[hash] = nil
     end
@@ -233,6 +249,22 @@ end
 -- ------------------------------------------------------------- KOReader side
 
 local running = false
+local after_flush = {}
+
+-- Aleph for Grimmory modification, 2026-11-28: fn once the positions being
+-- sent are sent (at once when none are). Grimmory sets a book's status from
+-- the percentage each time a position arrives, so a status set by hand
+-- (aleph_grimmory_sync.lua) goes after it, not before.
+function G.after(fn)
+    if running then after_flush[#after_flush + 1] = fn else fn() end
+end
+function G.isRunning() return running end
+
+local function afterFlushed()
+    local list = after_flush
+    after_flush = {}
+    for _i, fn in ipairs(list) do try(fn) end
+end
 
 local function resultPath()
     return require("datastorage"):getSettingsDir() .. "/aleph_grimmory_job.lua"
@@ -297,8 +329,9 @@ function G.flush(done)
     if not why and #queue == 0 then why = "empty" end
     if why then if done then done(nil, why) end return end
     running = true
-    G.run({ push = queue }, function(r)
+    local started = G.run({ push = queue }, function(r)
         running = false
+        afterFlushed()
         if r then
             -- Sent, or a book Grimmory does not have: done with. Failed:
             -- kept for the next time, up to TRIES times.
@@ -316,12 +349,13 @@ function G.flush(done)
             Prefs.set("grimmory_queue", #left > 0 and left or nil)
             for _i, e in ipairs(queue) do
                 if r.pushed[e.hash] then
-                    remember(e.hash, { pct = e.pct, device = deviceName(), device_id = deviceId(), time = e.time })
+                    remember(e.hash, { pct = e.pct, progress = e.progress, device = deviceName(), device_id = deviceId(), time = e.time })
                 end
             end
         end
         if done then done(r, not r and "failed" or nil) end
     end)
+    if not started and running then running = false; afterFlushed() end
 end
 
 -- The open book: its partial MD5, percentage (0..1) and position.
@@ -346,14 +380,36 @@ function G.close(ui)
     if not G.enabled() then return end
     local pos = G.position(ui)
     if not pos then return end
+    -- Aleph for Grimmory modification, 2026-11-28: a book closed where
+    -- Grimmory already has it is not sent again (each position sent also
+    -- resets the book's status in Grimmory from its percentage).
+    if G.unchanged(G.cached(pos.hash), pos) then return end
     Prefs.set("grimmory_queue", G.enqueue(G.queue(), pos))
     G.flush()
+end
+
+-- Whether Grimmory already has this position (pure).
+function G.unchanged(cached, pos)
+    if type(cached) ~= "table" or type(pos) ~= "table" then return false end
+    if cached.progress == nil or tostring(cached.progress) ~= tostring(pos.progress) then return false end
+    return math.abs((tonumber(cached.pct) or -1) - (tonumber(pos.pct) or 0)) < G.SAME
+end
+
+-- The status Grimmory gives a book from a position's percentage (0..1), as
+-- its KOReader interface does (KoreaderService.updateReadStatus).
+function G.statusFromPercent(pct)
+    pct = tonumber(pct)
+    if not pct then return nil end
+    if pct * 100 >= 99.5 then return "READ" end
+    if pct * 100 >= 0.25 then return "READING" end
+    return "UNREAD"
 end
 
 local function jump(ui, remote)
     local Event = require("ui/event")
     if remote.progress then
-        if ui.rolling then
+        -- (Only a crengine position: anything else goes by the percentage.)
+        if ui.rolling and tostring(remote.progress):match("^/body/") then
             ui:handleEvent(Event:new("GotoXPointer", remote.progress))
             return
         elseif ui.paging and tonumber(remote.progress) then

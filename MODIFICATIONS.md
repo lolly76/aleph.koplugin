@@ -1,5 +1,24 @@
 # Aleph (formerly Reading Board) — modifications, 2026-11-07 to 2026-11-15
 
+## 2026-11-28 — 1.3.0-grimmory.4 (Aleph for Grimmory fork)
+
+Fixes found by a review before the first tests on a device, and checked against a real Grimmory in Docker (new tests/e2e/).
+
+- **One Grimmory run at a time** (aleph_grimmory_sync.lua run): Grimmory takes a refresh token back when it gives a new one, and two runs renewing at once (highlights and changes as a book closes, after the 2-hour access token ran out) signed the device out. Runs now wait their turn, each starts with the tokens the one before left, each has its own tokens file, and renewed tokens are written out at once (G_reader_settings:flush).
+- **A refresh token refused in its first 2 minutes is kept** (aleph_grimmory_api.lua Api:refresh): Grimmory does not take one before then ("not before"); that refusal signed the device out. Found by the run against a real Grimmory.
+- **Highlights without holding up the reader** (aleph_grimmory_cfi.lua): each chapter is parsed once (the last 4 kept) and each position ↔ CFI conversion worked out once while the book is open; before, a chapter was parsed 6 to 8 times for each highlight.
+- **A status set by hand stays in Grimmory** (aleph_grimmory_sync.lua S.changes, S.flush; aleph_grimmory.lua G.after, G.statusFromPercent): Grimmory sets Reading or Read from each position it receives, so On hold, or Finished before the end, is sent again after the position. The account's changes wait for the positions being sent. A book closed where Grimmory already has it is not sent again (G.unchanged).
+- **Status and stars set from Home, the library or a book's page go to Grimmory** (aleph_local.lua Local:saveSummary): KOReader has no DocSettingsItemsChanged event, so these were only sent once the book was opened and closed.
+- **Reading sessions end as the device goes to sleep** and another starts on waking (main.lua Board:onSuspend / onResume, S.suspend / S.resume): a book left open overnight counted the night.
+- **Another server address** signs the account out (also on the old server), forgets its book matches, what was sent, the queue and positions (S.serverChanged); highlights drop the old account's ids as each book opens (H.forgetIds), and are found again by their place.
+- **Sign-out on the server too** (POST /api/v1/auth/logout, S.workLogout).
+- **Downloads**: no limit in all while data keeps coming (a stalled one stops after 30 s; at most an hour), never replacing a file of the same name ("… (2)"), the server's extension cleaned, names cut on whole characters, nothing left behind when one fails (aleph_grimmory_http.lua, aleph_grimmory_browse.lua B.freePath, aleph_grimmory_api.lua Api.cut).
+- **The whole library** may take up to 4 minutes to arrive (Api:books; the run up to 5).
+- **Highlight dates** from Grimmory in KOReader's form, "2026-11-27 09:00:00", in the device's time (aleph_grimmory_annotations.lua localDate).
+- **Safer requests**: the token goes only to the configured server (Api.onServer, for "next" links); a position from elsewhere is jumped to only when it is a crengine one; a warning when an http:// address is not on the home network (G.insecure, Settings > Grimmory server).
+- **About**: modification date 2026-11-28 and this fork's source.
+- **Tests**: tests/grimmory_fixes_test.lua (59 checks); tests/e2e/run.sh starts Grimmory and MariaDB in Docker and runs Aleph's Grimmory code against them (tests/e2e/grimmory_e2e.lua); .github/workflows/tests.yml runs the tests with LuaJIT on every push (the Docker run on demand). 267 checks without Docker.
+
 ## 2026-11-27 — 1.3.0-grimmory.3 (Aleph for Grimmory fork)
 
 - **Highlights as Grimmory's own** (new aleph_grimmory_highlights.lua; aleph_grimmory_cfi.lua, aleph_grimmory_annotations.lua and aleph_slaxml.lua taken from ManorianOTP's Grimmory-KOReader-Client, MIT, see THIRD_PARTY_NOTICES.md): an EPUB's highlights synced both ways with Grimmory's annotations (/api/v1/annotations) through EPUB CFI, when it opens (main.lua Board:onReaderReady), a few seconds after a highlight changes (new Board:onAnnotationsModified), when Wi-Fi comes back and when it closes. Three-way merge against the last agreed state (kept per book in aleph_grimmory_state.lua, ann); conflicts are left as they are on each side. Setting "Sync the highlights" (grimmory_highlights); the "KOReader highlights" note is kept for other books.

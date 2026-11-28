@@ -38,6 +38,24 @@ function B.folder(browser)
     return G_reader_settings and G_reader_settings:readSetting("home_dir") or nil
 end
 
+-- Aleph for Grimmory modification, 2026-11-28: a path no file has yet
+-- ("Title.epub", then "Title (2).epub"...), so a download never replaces
+-- another book. exists(path) for tests.
+function B.freePath(path, exists)
+    exists = exists or function(p)
+        local okl, lfs = pcall(require, "libs/libkoreader-lfs")
+        return okl and lfs.attributes(p, "mode") ~= nil
+    end
+    if not exists(path) then return path end
+    local stem, ext = path:match("^(.*)(%.[^%./]+)$")
+    stem, ext = stem or path, ext or ""
+    for n = 2, 99 do
+        local p = stem .. " (" .. n .. ")" .. ext
+        if not exists(p) then return p end
+    end
+    return stem .. " (" .. os.time() .. ")" .. ext
+end
+
 -- The line shown for a book.
 function B.label(book)
     local md = type(book.metadata) == "table" and book.metadata or {}
@@ -72,11 +90,12 @@ local function replace(title, items, select_last)
 end
 
 -- A request in the background, with a "Loading" pill.
-local function ask(kind, fn, plan, done)
+local function ask(kind, fn, plan, done, on_fail)
     local pill
     try(function() pill = require("aleph_toast").loading(_("Asking Grimmory…")) end)
     Sync()._run(kind, fn, plan or {}, function(r)
         if pill then try(function() pill:close() end) end
+        if on_fail and not (r and r.code == 200) then try(on_fail) end
         if not r or r.code == nil then return toast(_("Grimmory did not answer."), false) end
         if r.code == 401 or r.code == 403 then return toast(_("Grimmory signed this device out. Sign in again."), false) end
         if r.code ~= 200 then return toast(_("Grimmory did not answer."), false) end
@@ -87,17 +106,21 @@ end
 local function download(book, browser)
     local folder = B.folder(browser)
     if not folder then return toast(_("Choose a download folder first (Settings > Library > Grimmory)."), false) end
-    local path = folder:gsub("/$", "") .. "/" .. Api().fileNameFor(book)
+    local path = B.freePath(folder:gsub("/$", "") .. "/" .. Api().fileNameFor(book))
+    -- (No limit in all while data keeps coming: an hour at most.)
     ask("download", function(plan)
         local api = Sync().apiFor(plan)
         return { code = api:download(plan.id, plan.path) }
-    end, { id = book.id, path = path }, function()
+    end, { id = book.id, path = path, timeout = 3600 }, function()
         local st = Sync().state()
         st.ids[path] = tonumber(book.id)
         Sync().saveState()
         toast(require("ffi/util").template(_("Downloaded: %1"), B.label(book)), true)
         if browser and browser.startScan then try(function() browser:startScan() end) end
         if menu then try(function() menu:updateItems() end) end
+    end, function()
+        -- A download stopped halfway leaves nothing behind.
+        os.remove(path .. ".part")
     end)
 end
 

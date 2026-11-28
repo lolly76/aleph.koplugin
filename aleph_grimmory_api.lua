@@ -42,11 +42,18 @@ end
 
 local function now() return os.time() end
 
+-- Seconds after it is made before Grimmory takes a refresh token (2 minutes
+-- on the server; a little more for clocks that differ).
+Api.NOT_BEFORE = 180
+
 function Api:_setTokens(answer)
     if type(answer) ~= "table" or type(answer.accessToken) ~= "string" then return false end
     local t = self.tokens
     t.access = answer.accessToken
-    if type(answer.refreshToken) == "string" and answer.refreshToken ~= "" then t.refresh = answer.refreshToken end
+    if type(answer.refreshToken) == "string" and answer.refreshToken ~= "" then
+        t.refresh = answer.refreshToken
+        t.refresh_at = now()
+    end
     t.access_exp = now() + math.max(60, (tonumber(answer.expires) or 7200) - 120)
     t.refresh_exp = now() + 30 * 86400
     if self.on_tokens then pcall(self.on_tokens, t) end
@@ -67,7 +74,11 @@ function Api:refresh()
     local code, answer = Http.request{ method = "POST", url = self.base .. "/api/v1/auth/refresh",
         json = { refreshToken = self.tokens.refresh } }
     if code == 200 and not self:_setTokens(answer) then code = nil end
-    if code == 401 or code == 403 then
+    -- Aleph for Grimmory modification, 2026-11-28: Grimmory refuses a refresh
+    -- token for its first 2 minutes ("not before"): refused then, it is kept
+    -- and tried again later, never taken for a sign-out.
+    local young = (tonumber(self.tokens.refresh_at) or 0) > now() - Api.NOT_BEFORE
+    if (code == 401 or code == 403) and not young then
         -- The refresh token is no longer good: signed out.
         self.tokens.access, self.tokens.refresh = nil, nil
         if self.on_tokens then pcall(self.on_tokens, self.tokens) end
@@ -80,16 +91,20 @@ function Api:signedIn() return self.tokens.refresh ~= nil or self.tokens.access 
 -- One call, signed in. path: "/api/v1/..." (or a whole address). file: the
 -- answer saved there (a download). Returns code, answer (decoded JSON).
 -- A refused access token is renewed once and the call made again.
-function Api:call(method, path, json, file)
+function Api:call(method, path, json, file, opts)
     if not self:signedIn() then return 401 end
     if not self.tokens.access or now() >= (tonumber(self.tokens.access_exp) or 0) then
         local rc = self:refresh()
         if rc ~= 200 then return rc end
     end
-    local url = path:match("^https?://") and path or (self.base .. path)
+    -- Aleph for Grimmory modification, 2026-11-28: only this server's
+    -- addresses get the token (a whole address elsewhere is refused).
+    local url = Api.onServer(self.base, path)
+    if not url then return nil end
     local function go()
         return Http.request{ method = method, url = url, json = json, file = file,
             accept = file and "*/*" or nil,
+            block = opts and opts.block, total = opts and opts.total,
             headers = { ["Authorization"] = "Bearer " .. tostring(self.tokens.access) } }
     end
     local code, answer = go()
@@ -103,8 +118,14 @@ end
 
 -- ------------------------------------------------------------ the calls
 
+-- (The whole library in one answer: up to 4 minutes for a big one.)
+-- Signs out on the server: the refresh token is taken back there too.
+function Api:logout()
+    return self:call("POST", "/api/v1/auth/logout", { refreshToken = self.tokens.refresh })
+end
+
 function Api:books()
-    local code, data = self:call("GET", "/api/v1/books")
+    local code, data = self:call("GET", "/api/v1/books", nil, nil, { block = 60, total = 240 })
     return code, type(data) == "table" and data or nil
 end
 
@@ -198,6 +219,22 @@ function Api:session(s)
 end
 
 -- ------------------------------------------------------------ pure parts
+
+-- The whole address of path on the server base, or nil when path is a whole
+-- address on another server (a "next" link, say): the token never goes there.
+function Api.onServer(base, path)
+    if type(path) ~= "string" then return nil end
+    if not path:match("^https?://") then
+        return base .. (path:sub(1, 1) == "/" and "" or "/") .. path
+    end
+    local function origin(u)
+        local scheme, host = u:match("^(https?)://([^/%?#]+)")
+        return scheme and (scheme:lower() .. "://" .. host:lower()) or nil
+    end
+    local b = origin(base)
+    if b and origin(path) == b then return path end
+    return nil
+end
 
 -- The "next" link of a page's links, or nil. A link's rel is a word or a list.
 function Api.nextLink(links)
@@ -401,6 +438,15 @@ function Api.isbnOf(book)
     if isbn and #digits(isbn) >= 10 then return digits(isbn) end
 end
 
+-- s cut to at most n bytes, never inside a UTF-8 character.
+function Api.cut(s, n)
+    if #s <= n then return s end
+    local i = n
+    -- Back to the first byte of the character that would be cut.
+    while i > 0 and s:byte(i + 1) and s:byte(i + 1) >= 0x80 and s:byte(i + 1) < 0xC0 do i = i - 1 end
+    return s:sub(1, i)
+end
+
 -- A file name for a downloaded book: "Author - Title.epub", without the
 -- characters file systems refuse.
 function Api.fileNameFor(book)
@@ -411,8 +457,14 @@ function Api.fileNameFor(book)
     local authors = type(md.authors) == "table" and md.authors or {}
     local title = md.title or book.title or ("book " .. tostring(book.id))
     local name = (authors[1] and (authors[1] .. " - ") or "") .. title
-    name = name:gsub('[\\/:%*%?"<>|%c]', "_"):gsub("%s+", " "):gsub("^[%s%.]+", ""):sub(1, 150)
-    return name .. "." .. ext:lower()
+    name = name:gsub('[\\/:%*%?"<>|%c]', "_"):gsub("%s+", " "):gsub("^[%s%.]+", "")
+    name = Api.cut(name, 150)
+    -- Aleph for Grimmory modification, 2026-11-28: the extension from the
+    -- server kept to letters and digits.
+    ext = tostring(ext):lower():gsub("[^%w]", "")
+    if ext == "" or #ext > 8 then ext = "epub" end
+    if name == "" then name = "book " .. tostring(book.id) end
+    return name .. "." .. ext
 end
 
 return Api
