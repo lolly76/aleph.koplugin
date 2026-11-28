@@ -86,6 +86,9 @@ local size = io.open(epub, "rb"):seek("end")
 local found = Api.match({ { path = epub, title = "Aleph Test Book", authors = { "Ada Tester" }, size = size } }, lib.books)
 local id = found[epub]
 eq(type(id), "number", "the book matched")
+-- Matched in the background, as Home does it (one id a book handed back).
+local lib2 = S.workLibrary(plan({ shelves = true, locals = { { path = epub, title = "Aleph Test Book", authors = { "Ada Tester" }, size = size } } }))
+eq(lib2.found and lib2.found[epub], id, "matched in the background too")
 S.state().ids[epub] = id
 
 local function book()
