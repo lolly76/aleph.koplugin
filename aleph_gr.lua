@@ -663,10 +663,13 @@ function Core.close(ui)
     h.state = {}
 end
 
--- KOReader changed a book's status or stars (DocSettingsItemsChanged).
+-- KOReader changed a book's status or stars (its own screens, through
+-- aleph_summary_watch.lua). doc_settings: a DocSettings, or { summary = ... }.
 function Core.docChanged(ui, file, doc_settings)
-    if type(doc_settings) ~= "table" or type(doc_settings.summary) ~= "table" then return end
+    if type(doc_settings) ~= "table" then return end
     local summary = doc_settings.summary
+    if summary == nil and type(doc_settings.readSetting) == "function" then summary = doc_settings:readSetting("summary") end
+    if type(summary) ~= "table" then return end
     if summary.status then Core.statusChanged(file, summary.status, { rating = summary.rating, finishedOn = summary.modified }, ui) end
     if summary.rating then Core.ratingChanged(file, summary.rating, ui) end
 end

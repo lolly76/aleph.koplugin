@@ -7239,6 +7239,9 @@ msgstr ""
 msgid "Signed in to Grimmory. Progress sync is set up too."
 msgstr ""
 
+msgid "Signed in to Grimmory. Progress sync is not set up: in Grimmory, this account needs the KOReader Sync permission (Settings > Users)."
+msgstr ""
+
 msgid "Made in Grimmory, or set up by signing in to your Grimmory account below"
 msgstr ""
 

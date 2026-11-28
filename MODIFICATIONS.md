@@ -1,5 +1,13 @@
 # Aleph (formerly Reading Board) — modifications, 2026-11-07 to 2026-11-15
 
+## 2026-11-28 — after 1.3.0-grimmory.4 (Aleph for Grimmory fork)
+
+Minor points left from the review.
+
+- **Status and stars changed in KOReader's own screens** (the file browser's long-press dialog, Book information, several books at once) reach Goodreads and Grimmory (new aleph_summary_watch.lua, which wraps KOReader's filemanagerutil.saveSummary once from Board:init). main.lua's Board:onDocSettingsItemsChanged is removed: KOReader has no such event, so it never ran, and Goodreads, as in Aleph, never heard of these changes. aleph_gr.lua Core.docChanged takes a DocSettings as well. Without a Goodreads sign-in or a Grimmory account, nothing is sent, as before.
+- **Signing in to an account without Grimmory's "KOReader Sync" permission** still signs in, and now says that progress sync is not set up and why (aleph_grimmory_sync.lua S.workLogin, S.login); before, it said only "Signed in".
+- **Tests**: tests/summary_watch_test.lua (20 checks), 3 more in tests/grimmory_highlights_test.lua. 290 checks in all.
+
 ## 2026-11-28 — 1.3.0-grimmory.4 (Aleph for Grimmory fork)
 
 Fixes found by a review before the first tests on a device, and checked against a real Grimmory in Docker (new tests/e2e/).

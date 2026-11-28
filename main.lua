@@ -151,6 +151,9 @@ function Board:init()
         local home = G_reader_settings:readSetting("home_dir")
         self.settings.library_roots = home and { home } or {}
     end
+    -- Aleph for Grimmory modification, 2026-11-28: status and stars changed
+    -- in KOReader's own screens, to Goodreads and Grimmory.
+    try(function() require("aleph_summary_watch").install() end)
     -- Aleph on the first page of Tools, below calibre.
     try(function() require("aleph_menu_pin").ensure() end)
     self.ui.menu:registerToMainMenu(self)
@@ -349,14 +352,10 @@ end
 function Board:onPosUpdate(_pos, page)
     if page then return self:onPageUpdate(page) end
 end
--- KOReader changed a book's status or stars: Goodreads follows (only the
--- open book's reader, or the file browser).
-function Board:onDocSettingsItemsChanged(file, doc_settings)
-    if self.ui.document and self.ui.document.file ~= file then return end
-    try(function() require("aleph_gr").docChanged(self.ui, file, doc_settings) end)
-    -- Aleph for Grimmory modification, 2026-11-27: status and stars to Grimmory.
-    try(function() require("aleph_grimmory_sync").docChanged(file, doc_settings) end)
-end
+-- Aleph for Grimmory modification, 2026-11-28: a status or stars changed in
+-- KOReader's own screens reach Goodreads and Grimmory through
+-- aleph_summary_watch.lua (KOReader has no DocSettingsItemsChanged event,
+-- which this file used to wait for).
 -- Aleph for Grimmory modification, 2026-11-27: a highlight added, changed
 -- or removed goes to Grimmory a few seconds later (aleph_grimmory_highlights.lua).
 function Board:onAnnotationsModified()
