@@ -39,6 +39,7 @@ G.TIMEOUT = 25            -- a background request is stopped after this long
 G.REMOTE_MAX = 400        -- books whose Grimmory position is remembered
 G.SAME = 0.005            -- positions closer than this (0..1) are the same
 G.TRIES = 10              -- a position that failed this many times is dropped
+G.BATCH = 6               -- positions sent in one run (the rest in the next one)
 
 -- ------------------------------------------------------------- pure parts
 
@@ -232,15 +233,22 @@ function G.work(plan)
     end
     for _i, e in ipairs(plan.push or {}) do
         local code = G.request("PUT", api .. "/syncs/progress", cred, G.body(e, plan.device, plan.device_id))
+        -- Aleph for Grimmory modification, 2026-11-28: no answer (Wi-Fi
+        -- gone, the server out of reach) or the account refused: not this
+        -- position's fault, so not counted against it (ten failures drop
+        -- it), and the rest wait for the next run.
+        if code == nil then r.offline = true; break end
+        if code == 401 or code == 403 then r.auth = code; break end
         if code == 200 or code == 202 then r.pushed[e.hash] = true
         elseif code == 404 then r.unknown[e.hash] = true
-        else r.failed[e.hash] = code or false end
-        if code == 401 or code == 403 then r.auth = code; break end
+        else r.failed[e.hash] = code end
     end
     for _i, hash in ipairs(plan.pull or {}) do
         local code, answer = G.request("GET", api .. "/syncs/progress/" .. hash, cred)
         if code == 200 then r.pulled[hash] = G.parseProgress(answer) or false
         elseif code == 401 or code == 403 then r.auth = code; break
+        -- (No answer: nothing known, rather than "Grimmory has nothing".)
+        elseif code == nil then r.offline = true; break
         else r.pulled[hash] = false end
     end
     return r
@@ -328,6 +336,14 @@ function G.flush(done)
     local queue = G.queue()
     if not why and #queue == 0 then why = "empty" end
     if why then if done then done(nil, why) end return end
+    -- Aleph for Grimmory modification, 2026-11-28: a few at a time, so a
+    -- run ends before it is stopped (G.TIMEOUT) even after weeks offline.
+    local all = #queue
+    if all > G.BATCH then
+        local some = {}
+        for i = 1, G.BATCH do some[i] = queue[i] end
+        queue = some
+    end
     running = true
     local started = G.run({ push = queue }, function(r)
         running = false
@@ -351,6 +367,11 @@ function G.flush(done)
                 if r.pushed[e.hash] then
                     remember(e.hash, { pct = e.pct, progress = e.progress, device = deviceName(), device_id = deviceId(), time = e.time })
                 end
+            end
+            -- The next few, when this run got through.
+            if all > #queue and #left > 0 and not r.offline and not r.auth
+                    and (next(r.pushed) or next(r.unknown)) then
+                try(function() require("ui/uimanager"):nextTick(function() G.flush() end) end)
             end
         end
         if done then done(r, not r and "failed" or nil) end

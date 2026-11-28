@@ -43,6 +43,7 @@ local S = {}
 
 S.TIMEOUT = 120           -- a background run is stopped after this long
 S.TRIES = 10              -- a change that failed this many times is dropped
+S.BATCH = 25              -- changes sent in one run (the rest in the next one)
 S.DAY = 86400
 S.QUEUE_MAX = 300         -- the oldest changes dropped past this (books never matched)
 
@@ -231,10 +232,15 @@ function S.workOps(plan)
                 if type(answer) == "table" and answer.id then r.note_ids[op.id] = answer.id end
             end
         end
-        if code and code >= 200 and code < 300 then r.done[i] = true
-        elseif code == 404 then r.done[i] = true   -- the book is gone from Grimmory
-        else r.failed[i] = code or false end
+        -- Aleph for Grimmory modification, 2026-11-28: no answer (Wi-Fi
+        -- gone, the server out of reach) and signed out are not the
+        -- change's fault: it is kept as it was, not counted as failed (ten
+        -- failures drop it), and the rest wait for the next run.
+        if code == nil then r.offline = true; break end
         if code == 401 then r.auth = code; break end
+        if code >= 200 and code < 300 then r.done[i] = true
+        elseif code == 404 then r.done[i] = true   -- the book is gone from Grimmory
+        else r.failed[i] = code end
     end
     return r
 end
@@ -289,6 +295,15 @@ function S.workLibrary(plan)
                 shelves[#shelves + 1] = { id = sh.id, name = sh.name, ids = ids }
             end
         end
+    end
+    -- Aleph for Grimmory modification, 2026-11-28: with the device's books
+    -- (plan.locals), matched here, in the background: a big library no
+    -- longer holds up Home while it is matched, and the answer handed back
+    -- is one id a book (a file of every Grimmory book's title, authors and
+    -- ISBNs could not be read back past about 13,000 books: LuaJIT takes
+    -- 65,536 different strings in a file at most).
+    if plan.locals then
+        return { code = 200, found = (require("aleph_grimmory_api").match(plan.locals, small)), remote = #small, shelves = shelves }
     end
     return { code = 200, books = small, shelves = shelves }
 end
@@ -524,14 +539,13 @@ function S.syncLibrary(done)
         return
     end
     local shelves_on = Prefs.on("grimmory_shelves")
-    S._run("library", S.workLibrary, { shelves = shelves_on, timeout = 300 }, function(r)
+    local locals = localBooks()
+    S._run("library", S.workLibrary, { shelves = shelves_on, timeout = 300, locals = locals }, function(r)
         if not r or r.code ~= 200 then
             if done then done(nil, (r and (r.code == 401 or r.code == 403)) and _("Grimmory signed this device out. Sign in again.") or _("Grimmory did not answer.")) end
             return
         end
-        local Api = require("aleph_grimmory_api")
-        local locals = localBooks()
-        local found = Api.match(locals, r.books)
+        local found = type(r.found) == "table" and r.found or {}
         local st = S.state()
         -- Downloads stay known even when their name changed since.
         local lfs_ok, lfs = pcall(require, "libs/libkoreader-lfs")
@@ -546,7 +560,7 @@ function S.syncLibrary(done)
         if shelves_on then changed = S.applyShelves(r.shelves, found) end
         S.saveState()
         S.flush()
-        if done then done({ matched = n, total = #locals, remote = #(r.books or {}), shelves = #(r.shelves or {}), placed = changed }) end
+        if done then done({ matched = n, total = #locals, remote = tonumber(r.remote) or 0, shelves = #(r.shelves or {}), placed = changed }) end
     end)
 end
 
@@ -570,6 +584,11 @@ function S.flush(done)
             if op.op == "notes" then op.note_id = (st.sent[op.id] or {}).note_id end
         end
         if #ops == 0 then why = "unmatched" end
+        -- Aleph for Grimmory modification, 2026-11-28: a few at a time. A
+        -- month away from the server can leave hundreds; all in one run
+        -- took longer than a run may last, was stopped each time and none
+        -- was ever marked sent.
+        while #ops > S.BATCH do table.remove(ops) end
     end
     if why then if done then done(nil, why) end return end
     S._run("ops", S.workOps, { ops = ops }, function(r)
@@ -598,6 +617,10 @@ function S.flush(done)
             end
             Prefs.set("grimmory_ops", #left > 0 and left or nil)
             S.saveState()
+            -- The next few, when this run got through.
+            if #ops == S.BATCH and not r.offline and not r.auth and next(done_keys) then
+                try(function() require("ui/uimanager"):nextTick(function() S.flush() end) end)
+            end
         end
         if done then done(r, not r and "failed" or nil) end
     end)
