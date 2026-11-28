@@ -7288,6 +7288,9 @@ msgstr "Il envoie la progression à Grimmory : Aleph le laisse faire"
 msgid "Signed in to Grimmory. Progress sync is set up too."
 msgstr "Connecté à Grimmory. La synchro de la progression est aussi configurée."
 
+msgid "Signed in to Grimmory. Progress sync is not set up: in Grimmory, this account needs the KOReader Sync permission (Settings > Users)."
+msgstr "Connecté à Grimmory. La synchro de la progression n'est pas configurée : dans Grimmory, ce compte doit avoir l'autorisation « Synchronisation KOReader » (Paramètres > Utilisateurs)."
+
 msgid "Made in Grimmory, or set up by signing in to your Grimmory account below"
 msgstr "Créé dans Grimmory, ou configuré en se connectant à votre compte Grimmory plus bas"
 

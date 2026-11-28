@@ -260,6 +260,10 @@ function S.workLogin(plan)
     if creds then
         if not (type(me) == "table" and me.syncEnabled == true) then api:setKoreaderSync(true) end
         r.kosync = creds
+    elseif c == 403 then
+        -- Aleph for Grimmory modification, 2026-11-28: the account lacks
+        -- Grimmory's "KOReader Sync" permission; signing in still works.
+        r.kosync_denied = true
     end
     return r
 end
@@ -416,6 +420,9 @@ function S.login(user, password, done)
                 Prefs.set("grimmory_user", r.kosync.user)
                 Prefs.set("grimmory_key", r.kosync.key)
                 return done(true, _("Signed in to Grimmory. Progress sync is set up too."))
+            end
+            if r.kosync_denied and not G.configured() then
+                return done(true, _("Signed in to Grimmory. Progress sync is not set up: in Grimmory, this account needs the KOReader Sync permission (Settings > Users)."))
             end
             return done(true, _("Signed in to Grimmory."))
         end

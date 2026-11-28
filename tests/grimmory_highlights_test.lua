@@ -36,6 +36,7 @@ local function route(o)
         return 200, { accessToken = server.access, refreshToken = server.refresh, expires = 7200 }
     end
     if h["Authorization"] ~= "Bearer " .. server.access then return 401 end
+    if path:match("^/api/v1/koreader%-users/me") and server.no_kosync_right then return 403 end
     if path == "/api/v1/koreader-users/me" and (o.method or "GET") == "GET" then
         if not server.kouser then return 404 end
         return 200, server.kouser
@@ -182,6 +183,12 @@ eq(r.kosync.key, "md5:" .. made, "and read back")
 r = S.workLogin({ base = "http://h", tokens = {}, tokens_out = tokens_out, user = "alex", password = "secret", kosync = false })
 eq(r.kosync, nil, "progress already set up by hand: left alone")
 eq(S.workLogin({ base = "http://h", tokens = {}, tokens_out = tokens_out, user = "alex", password = "no", kosync = true }).code, 401, "wrong password")
+-- (2026-11-28) An account without Grimmory's KOReader Sync permission: signed in, and told why.
+server.no_kosync_right = true
+r = S.workLogin({ base = "http://h", tokens = {}, tokens_out = tokens_out, user = "alex", password = "secret", kosync = true })
+eq(r.code, 200, "no KOReader Sync permission: still signed in")
+eq(r.kosync, nil, "no KOReader user"); eq(r.kosync_denied, true, "the reason kept")
+server.no_kosync_right = nil
 
 -- ------------------------------------------------------------- highlights both ways
 local api = Api.new("http://h", {}, function() end)
